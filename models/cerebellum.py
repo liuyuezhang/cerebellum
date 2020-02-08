@@ -47,13 +47,13 @@ class FC:
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape) - self.b
-        if self.ltd is 'ma':
+        if self.ltd == 'ma':
             self.b = self.beta * self.b + (1 - self.beta) * self.b
         # forward
         z = self.W @ self.x
         self.y = sigmoid(z).reshape(self.out_shape)
         # save derivative
-        if self.update is 'gradient':
+        if self.update == 'gradient':
             self.derive = self.y * (1 - self.y)
         return self.y
 
@@ -61,9 +61,9 @@ class FC:
         # input
         self.e = e.reshape(self.out_shape)
         # calc derivative
-        if self.update is 'hebbian':
+        if self.update == 'hebbian':
             yw = self.x.T
-        elif self.update is 'gradient':
+        elif self.update == 'gradient':
             yw = self.derive @ self.x.T
         # update (RMSprop)
         g_w = yw * self.e
