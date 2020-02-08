@@ -75,7 +75,7 @@ def main():
     parser.add_argument('--granule-cell', type=str, default='random', choices=('random', 'pca', 'ica'))
     parser.add_argument('--purkinje-cell', type=str, default='fc', choices=('fc', 'lc'))
     parser.add_argument('--update', type=str, default='hebbian', choices=('hebbian', 'gradient'))
-    parser.add_argument('--ltd', type=str, default='none', choices=('none', ))
+    parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--wandb', type=int, default=True)
