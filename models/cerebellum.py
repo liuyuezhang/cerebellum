@@ -46,9 +46,10 @@ class FC:
 
     def forward(self, x):
         # input
-        self.x = x.reshape(self.in_shape) - self.b
+        x = x.reshape(self.in_shape)
         if self.ltd == 'ma':
-            self.b = self.beta * self.b + (1 - self.beta) * self.b
+            self.b = self.beta * self.b + (1 - self.beta) * x
+        self.x = x - self.b
         # forward
         z = self.W @ self.x
         self.y = sigmoid(z).reshape(self.out_shape)
