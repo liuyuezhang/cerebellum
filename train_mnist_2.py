@@ -6,7 +6,7 @@ import cupy as cp
 
 import chainer.functions as F
 
-from chainer.datasets import mnist
+from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
 from chainer.backends.cuda import to_cpu
@@ -66,7 +66,8 @@ def test(args, model, test_iter, epoch):
 
 def main():
     # Training settings
-    parser = argparse.ArgumentParser(description='MNIST')
+    parser = argparse.ArgumentParser(description='Cerebellum')
+    parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -78,7 +79,7 @@ def main():
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
-    parser.add_argument('--wandb', type=int, default=True)
+    parser.add_argument('--wandb', type=int, default=False)
     parser.add_argument('--log-interval', type=int, default=1000)
 
     args = parser.parse_args()
@@ -94,7 +95,10 @@ def main():
     cp.random.seed(args.seed)
 
     # data
-    train_data, test_data = mnist.get_mnist(withlabel=True, ndim=1)
+    if args.env == 'mnist':
+        train_data, test_data = get_mnist(withlabel=True, ndim=1)
+    elif args.env == 'cifar10':
+        train_data, test_data = get_cifar10(withlabel=True, ndim=1)
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
