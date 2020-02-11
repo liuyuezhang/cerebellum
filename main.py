@@ -69,24 +69,34 @@ def main():
     parser = argparse.ArgumentParser(description='Cerebellum')
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
     parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--epoch', type=int, default=167)
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--granule-cell', type=str, default='random', choices=('random', 'pca', 'ica'))
+    parser.add_argument('--granule-cell', type=str, default='randfc', choices=('randfc', 'randlc'))
     parser.add_argument('--purkinje-cell', type=str, default='fc', choices=('fc', 'lc'))
-    parser.add_argument('--update', type=str, default='hebbian', choices=('hebbian', 'gradient'))
+    parser.add_argument('--n-hidden', type=float, default=1000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
+    parser.add_argument('--beta', type=float, default=0.99)
+    parser.add_argument('--bias', default=False, action='store_true')
+    parser.add_argument('--nonlinearity', type=str, default='relu', choices=('sigmoid', 'relu'))
+    parser.add_argument('--learning', type=str, default='hebbian', choices=('hebbian', 'gradient'))
+    parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
+    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--alpha', type=float, default=0.99)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
-    parser.add_argument('--wandb', type=int, default=False)
+    parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--log-interval', type=int, default=1000)
 
     args = parser.parse_args()
+    print(args)
 
     # logger
-    name = 'mnist' + '_' + args.granule_cell + '-' + args.purkinje_cell + \
-           '-' + args.update + '-' + args.ltd + '_' + str(args.seed)
+    name = 'mnist' + '_' + args.granule_cell + '-' + args.purkinje_cell \
+           + '-' + str(args.n_hidden) \
+           + '-' + args.ltd + '-' + str(args.bias) + '-' + args.nonlinearity \
+           + '-' + args.learning + '-' + args.optimization + '_' + str(args.seed)
+    print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang")
 
@@ -97,16 +107,20 @@ def main():
     # data
     if args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
+        input_dim = 28 * 28
+        output_dim = 10
     elif args.env == 'cifar10':
         train_data, test_data = get_cifar10(withlabel=True, ndim=1)
+        input_dim = 32 * 32 * 3
+        output_dim = 10
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
     # model
-    lr = args.lr
     from models.cerebellum import Cerebellum, FC, Random
-    gc = Random(m=28 * 28, n=1000)
-    pc = FC(m=1000, n=10, lr=lr, update=args.update, ltd=args.ltd)
+    gc = Random(m=input_dim, n=args.n_hidden, bias=args.bias, nonlinearity=args.nonlinearity)
+    pc = FC(m=args.n_hidden, n=output_dim, ltd=args.ltd, beta=args.beta, bias=args.bias, nonlinearity=args.nonlinearity,
+            learning=args.learning, optimization=args.optimization, lr=args.lr, alpha=args.alpha)
     model = Cerebellum(gc=gc, pc=pc)
 
     # train
