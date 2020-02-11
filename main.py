@@ -98,7 +98,7 @@ def main():
            + '-' + args.learning + '-' + args.optimization + '_' + str(args.seed)
     print(name)
     if args.wandb:
-        wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args, id=name)
+        wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
     # seed
     np.random.seed(args.seed)
