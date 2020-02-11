@@ -34,7 +34,7 @@ class Cerebellum:
 
 # Purkinje cells
 class FC:
-    def __init__(self, m, n, ltd='none', beta=0.99, bias=False, nonlinearity='sigmoid',
+    def __init__(self, m, n, ltd='none', beta=0.99, bias=False, nonlinearity='relu',
                  learning='hebbian', optimization='rmsprop', lr=1e-4, alpha=0.99):
         # shape
         self.in_shape = (m, 1)
@@ -131,7 +131,7 @@ class FC:
 
 # Granule cells
 class RandFC:
-    def __init__(self, m, n, bias=False, nonlinearity='sigmoid'):
+    def __init__(self, m, n, bias=False, nonlinearity='relu'):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
@@ -165,3 +165,41 @@ class RandFC:
         # output
         self.y = y.reshape(self.out_shape)
         return self.y
+
+
+class RandLC:
+    def __init__(self, m, n, p=4, bias=False, nonlinearity='relu'):
+        # shape
+        self.in_shape = (m, 1)
+        self.out_shape = (n, 1)
+
+        # interface
+        self.x = cp.zeros(self.in_shape)
+        self.y = cp.zeros(self.out_shape)
+
+        # initialization is critical
+        stdv = 1. / cp.sqrt(m)
+        self.W = cp.random.uniform(-stdv, stdv, (n, m))
+        self.bias = bias
+        if self.bias:
+            self.b = cp.random.uniform(-stdv, stdv, self.out_shape)
+
+        # nonlinearity
+        self.nonlinearity = nonlinearity
+        if self.nonlinearity == 'sigmoid':
+            self.nonlinear = sigmoid
+            self.nonlinear_derive = sigmoid_derive
+        elif self.nonlinearity == 'relu':
+            self.nonlinear = relu
+            self.nonlinear_derive = relu_derive
+
+    def forward(self, x):
+        # input
+        self.x = x.reshape(self.in_shape)
+        # forward
+        z = self.W @ self.x + self.b if self.bias else self.W @ self.x
+        y = self.nonlinear(z)
+        # output
+        self.y = y.reshape(self.out_shape)
+        return self.y
+

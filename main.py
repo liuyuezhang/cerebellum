@@ -74,7 +74,7 @@ def main():
 
     parser.add_argument('--granule-cell', type=str, default='randfc', choices=('randfc', 'randlc'))
     parser.add_argument('--purkinje-cell', type=str, default='fc', choices=('fc', 'lc'))
-    parser.add_argument('--n-hidden', type=float, default=1000)
+    parser.add_argument('--n-hidden', type=int, default=1000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
