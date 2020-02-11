@@ -1,11 +1,23 @@
-from .utils import *
+from .functional import *
+import pickle
 
 
 # Cerebellum
 class Cerebellum:
-    def __init__(self, gc, pc):
-        self.gc = gc
-        self.pc = pc
+    def __init__(self, input_dim, output_dim, args):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.args = args
+
+        # Granule cells
+        if args.granule_cell == 'randfc':
+            self.gc = RandFC(m=input_dim, n=args.n_hidden, bias=args.bias, nonlinearity=args.nonlinearity)
+
+        # Purkinje cells
+        if args.purkinje_cell == 'fc':
+            self.pc = FC(m=args.n_hidden, n=output_dim, ltd=args.ltd, beta=args.beta, bias=args.bias,
+                         nonlinearity=args.nonlinearity,
+                         learning=args.learning, optimization=args.optimization, lr=args.lr, alpha=args.alpha)
 
     def forward(self, x):
         x = self.gc.forward(x)
@@ -15,8 +27,12 @@ class Cerebellum:
     def backward(self, e):
         self.pc.backward(e)
 
+    def save(self, dir):
+        with open(dir + '/model.pkl', 'wb') as output:  # Overwrites any existing file.
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
-# Pyramid cells
+
+# Purkinje cells
 class FC:
     def __init__(self, m, n, ltd='none', beta=0.99, bias=False, nonlinearity='sigmoid',
                  learning='hebbian', optimization='rmsprop', lr=1e-4, alpha=0.99):
@@ -114,7 +130,7 @@ class FC:
 
 
 # Granule cells
-class Random:
+class RandFC:
     def __init__(self, m, n, bias=False, nonlinearity='sigmoid'):
         # shape
         self.in_shape = (m, 1)

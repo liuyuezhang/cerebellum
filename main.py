@@ -66,10 +66,10 @@ def test(args, model, test_iter, epoch):
 
 def main():
     # Training settings
-    parser = argparse.ArgumentParser(description='Cerebellum')
+    parser = argparse.ArgumentParser(description='cerebellum')
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
     parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--epoch', type=int, default=167)
+    parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--granule-cell', type=str, default='randfc', choices=('randfc', 'randlc'))
@@ -98,7 +98,7 @@ def main():
            + '-' + args.learning + '-' + args.optimization + '_' + str(args.seed)
     print(name)
     if args.wandb:
-        wandb.init(name=name, project="cerebellum", entity="liuyuezhang")
+        wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args, id=name)
 
     # seed
     np.random.seed(args.seed)
@@ -117,16 +117,17 @@ def main():
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
     # model
-    from models.cerebellum import Cerebellum, FC, Random
-    gc = Random(m=input_dim, n=args.n_hidden, bias=args.bias, nonlinearity=args.nonlinearity)
-    pc = FC(m=args.n_hidden, n=output_dim, ltd=args.ltd, beta=args.beta, bias=args.bias, nonlinearity=args.nonlinearity,
-            learning=args.learning, optimization=args.optimization, lr=args.lr, alpha=args.alpha)
-    model = Cerebellum(gc=gc, pc=pc)
+    from models.cerebellum import Cerebellum
+    model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
 
     # train
+    test(args, model, test_iter, 0)
     for epoch in range(1, args.epoch + 1):
         train(args, model, train_iter, epoch)
         test(args, model, test_iter, epoch)
+
+    # save
+    model.save(dir=wandb.run.dir)
 
 
 if __name__ == '__main__':
