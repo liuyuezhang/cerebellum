@@ -33,7 +33,7 @@ def train(args, model, train_iter, epoch):
                 epoch, batch_idx, len(train_iter.dataset),
                 100. * batch_idx / len(train_iter.dataset), loss))
             if args.wandb:
-                wandb.log({"train_loss": loss, "batch": (epoch-1) * len(train_iter.dataset) + batch_idx})
+                wandb.log({"train_loss": loss, "batch": (epoch - 1) * len(train_iter.dataset) + batch_idx})
 
 
 def test(args, model, test_iter, epoch):
@@ -92,10 +92,9 @@ def main():
     print(args)
 
     # logger
-    name = 'mnist' + '_' + args.granule_cell + '-' + args.purkinje_cell \
-           + '-' + str(args.n_hidden) \
-           + '-' + args.ltd + '-' + str(args.bias) + '-' + args.nonlinearity \
-           + '-' + args.learning + '-' + args.optimization + '_' + str(args.seed)
+    name = args.env + '_' + args.granule_cell + '-' + args.purkinje_cell + '-' + str(args.n_hidden) \
+           + '-' + args.ltd + '-' + str(args.bias) + '-' + args.nonlinearity + '-' \
+           + args.learning + '-' + args.optimization + '_' + str(args.seed)
     print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
