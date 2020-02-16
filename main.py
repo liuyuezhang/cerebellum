@@ -72,7 +72,9 @@ def main():
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--granule-cell', type=str, default='randfc', choices=('randfc', 'randlc'))
+    parser.add_argument('--granule-cell', type=str, default='rand', choices=('rand', ))
+    parser.add_argument('--granule-connect', type=str, default='fc', choices=('fc', 'lc'))
+    parser.add_argument('--p', type=int, default=4)
     parser.add_argument('--purkinje-cell', type=str, default='fc', choices=('fc', 'lc'))
     parser.add_argument('--n-hidden', type=int, default=1000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
@@ -92,9 +94,18 @@ def main():
     print(args)
 
     # logger
-    name = args.env + '_' + args.granule_cell + '-' + args.purkinje_cell + '-' + str(args.n_hidden) \
-           + '-' + args.ltd + '-' + str(args.bias) + '-' + args.nonlinearity + '-' \
-           + args.learning + '-' + args.optimization + '_' + str(args.seed)
+    # granule cell
+    granule_cell = args.granule_cell + '-' + args.granule_connect
+    if args.granule_connect == 'lc':
+        granule_cell += ('-' + str(args.p))
+    # purkinje cell
+    purkinje_cell = args.purkinje_cell
+    # bias
+    bias = args.ltd + '-' + str(args.bias)
+    # learning
+    learning = args.learning + '-' + args.optimization
+    name = args.env + '_' + granule_cell + '_' + purkinje_cell + '_' \
+           + str(args.n_hidden) + '_' + bias + '_' + learning + '_' + str(args.seed)
     print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
