@@ -77,10 +77,10 @@ def main():
     parser.add_argument('--p', type=int, default=4)
     parser.add_argument('--purkinje-cell', type=str, default='fc', choices=('fc', 'lc'))
     parser.add_argument('--n-hidden', type=int, default=1000)
+    parser.add_argument('--purkinje-nonlinear', type=str, default='none', choices=('none', 'softmax'))  # todo: softmax
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--nonlinearity', type=str, default='relu', choices=('sigmoid', 'relu'))
     parser.add_argument('--learning', type=str, default='hebbian', choices=('hebbian', 'gradient'))
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
