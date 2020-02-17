@@ -68,19 +68,19 @@ def main():
     # Training settings
     parser = argparse.ArgumentParser(description='cerebellum')
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
-    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--batch-size', type=int, default=1)  # todo: batch size
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--granule-cell', type=str, default='rand', choices=('rand', ))
     parser.add_argument('--granule-connect', type=str, default='fc', choices=('fc', 'lc'))
     parser.add_argument('--p', type=int, default=4)
-    parser.add_argument('--purkinje-cell', type=str, default='fc', choices=('fc', 'lc'))
+    parser.add_argument('--purkinje-cell', type=str, default='fc')
     parser.add_argument('--n-hidden', type=int, default=1000)
-    parser.add_argument('--purkinje-nonlinear', type=str, default='none', choices=('none', 'softmax'))  # todo: softmax
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
+    parser.add_argument('--softmax', default=False, action='store_true')
     parser.add_argument('--learning', type=str, default='hebbian', choices=('hebbian', 'gradient'))
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
@@ -100,6 +100,8 @@ def main():
         granule_cell += ('-' + str(args.p))
     # purkinje cell
     purkinje_cell = args.purkinje_cell
+    if args.softmax:
+        purkinje_cell += '-softmax'
     # bias
     bias = args.ltd + '-' + str(args.bias)
     # learning

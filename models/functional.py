@@ -18,6 +18,13 @@ def relu_derive(x):
     return x > 0
 
 
+def softmax(x):
+    """Compute the softmax of vector x in a numerically stable way."""
+    x = x - cp.max(x)
+    exps = cp.exp(x)
+    return exps / cp.sum(exps)
+
+
 def n_ranges(start, end, return_flat=True):
     """
     Returns n ranges, n being the length of start (or end,

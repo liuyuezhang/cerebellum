@@ -1,4 +1,6 @@
-from .functional import *
+from models import functional as F
+import cupy as cp
+import numpy as np
 import pickle
 
 
@@ -12,13 +14,14 @@ class Cerebellum:
         # Granule cells
         if args.granule_cell == 'rand':
             if args.granule_connect == 'fc':
-                self.gc = RandFC(m=input_dim, n=args.n_hidden, bias=args.bias)
+                self.gc = RandFC(m=input_dim, n=args.n_hidden,)
             elif args.granule_connect == 'lc':
-                self.gc = RandLC(m=input_dim, n=args.n_hidden, p=args.p, bias=args.bias)
+                self.gc = RandLC(m=input_dim, n=args.n_hidden, p=args.p)
 
         # Purkinje cells
         if args.purkinje_cell == 'fc':
-            self.pc = FC(m=args.n_hidden, n=output_dim, ltd=args.ltd, beta=args.beta, bias=args.bias,
+            self.pc = FC(m=args.n_hidden, n=output_dim,
+                         ltd=args.ltd, beta=args.beta, bias=args.bias, softmax=args.softmax,
                          optimization=args.optimization, lr=args.lr, alpha=args.alpha)
 
     def forward(self, x):
@@ -36,7 +39,7 @@ class Cerebellum:
 
 # Purkinje cells
 class FC:
-    def __init__(self, m, n, ltd='none', beta=0.99, bias=False,
+    def __init__(self, m, n, ltd='none', beta=0.99, bias=False, softmax=False,
                  optimization='rmsprop', lr=1e-4, alpha=0.99):
         # shape
         self.in_shape = (m, 1)
@@ -61,8 +64,10 @@ class FC:
             self.b = cp.random.uniform(-stdv, stdv, self.out_shape)
 
         # nonlinearity
+        self.sofxmax = softmax
 
         # learning (hebbian or gradient)
+        self.learning = 'hebbian'
 
         # optimization
         self.optimization = optimization
@@ -86,8 +91,12 @@ class FC:
         z = self.W @ self.x
         if self.bias:
             z += self.b
+        if self.sofxmax:
+            y = F.softmax(z)
+        else:
+            y = z
         # output
-        self.y = z.reshape(self.out_shape)
+        self.y = y.reshape(self.out_shape)
         return self.y
 
     def backward(self, e):
@@ -116,7 +125,7 @@ class FC:
 
 # Granule cells
 class RandFC:
-    def __init__(self, m, n, bias=False, nonlinearity='relu'):
+    def __init__(self, m, n):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
@@ -128,21 +137,15 @@ class RandFC:
         # initialization is critical
         stdv = 1. / cp.sqrt(m)
         self.W = cp.random.uniform(-stdv, stdv, (n, m))
-        self.bias = bias
-        if self.bias:
-            self.b = cp.random.uniform(-stdv, stdv, self.out_shape)
 
         # nonlinearity
-        self.nonlinearity = nonlinearity
-        self.nonlinear = relu
+        self.nonlinear = F.relu
 
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape)
         # forward
         z = self.W @ self.x
-        if self.bias:
-            z += self.b
         y = self.nonlinear(z)
         # output
         self.y = y.reshape(self.out_shape)
@@ -150,7 +153,7 @@ class RandFC:
 
 
 class RandLC:
-    def __init__(self, m, n, p=4, bias=False, nonlinearity='relu'):
+    def __init__(self, m, n, p=4):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
@@ -158,20 +161,16 @@ class RandLC:
 
         # interface
         start = np.random.randint(m - p, size=n)
-        self.idx = np.array(n_ranges(start, start + p, return_flat=False))
+        self.idx = np.array(F.n_ranges(start, start + p, return_flat=False))
         self.x = cp.zeros(self.in_shape)
         self.y = cp.zeros(self.out_shape)
 
         # initialization is critical
         stdv = 1. / cp.sqrt(p)
         self.W = cp.random.uniform(-stdv, stdv, (n, p))
-        self.bias = bias
-        if self.bias:
-            self.b = cp.random.uniform(-stdv, stdv, self.out_shape)
 
         # nonlinearity
-        self.nonlinearity = nonlinearity
-        self.nonlinear = relu
+        self.nonlinear = F.relu
 
     def forward(self, x):
         # input
@@ -179,8 +178,6 @@ class RandLC:
         # forward
         x_idx = self.x.squeeze(axis=1)[self.idx]
         z = cp.sum(self.W * x_idx, axis=1, keepdims=True)
-        if self.bias:
-            z += self.b
         y = self.nonlinear(z)
         # output
         self.y = y.reshape(self.out_shape)
