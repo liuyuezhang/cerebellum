@@ -6,6 +6,7 @@ import cupy as cp
 
 import chainer.functions as F
 
+from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
@@ -58,7 +59,7 @@ def test(args, model, test_iter, epoch):
         accuracy = F.accuracy(output.reshape(1, -1), label)
         test_accuracies.append(to_cpu(accuracy.array))
 
-    print('val_loss:{:.04f} val_accuracy:{:.04f}'.format(
+    print('test_loss:{:.04f} test_accuracy:{:.04f}'.format(
         np.mean(test_losses), np.mean(test_accuracies)))
     if args.wandb:
         wandb.log({"test_acc": np.mean(test_accuracies), "epoch": epoch})
@@ -72,10 +73,10 @@ def main():
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--granule-cell', type=str, default='rand', choices=('rand', ))
-    parser.add_argument('--granule-connect', type=str, default='fc', choices=('fc', 'lc'))
+    parser.add_argument('--granule', type=str, default='rand', choices=('fc', 'lc', 'rand'),
+                        help='fully, locally or randomly random connected without training.')
     parser.add_argument('--p', type=int, default=4)
-    parser.add_argument('--purkinje-cell', type=str, default='fc')
+    parser.add_argument('--purkinje', type=str, default='fc')
     parser.add_argument('--n-hidden', type=int, default=1000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
@@ -95,18 +96,18 @@ def main():
 
     # logger
     # granule cell
-    granule_cell = args.granule_cell + '-' + args.granule_connect
-    if args.granule_connect == 'lc':
-        granule_cell += ('-' + str(args.p))
+    granule = args.granule
+    if args.granule == 'lc' or args.granule == 'rand':
+        granule += ('-' + str(args.p))
     # purkinje cell
-    purkinje_cell = args.purkinje_cell
+    purkinje = args.purkinje
     if args.softmax:
-        purkinje_cell += '-softmax'
+        purkinje += '-softmax'
     # bias
     bias = args.ltd + '-' + str(args.bias)
     # learning
     learning = args.learning + '-' + args.optimization
-    name = args.env + '_' + granule_cell + '_' + purkinje_cell + '_' \
+    name = args.env + '_' + granule + '_' + purkinje + '_' \
            + str(args.n_hidden) + '_' + bias + '_' + learning + '_' + str(args.seed)
     print(name)
     if args.wandb:
@@ -117,7 +118,11 @@ def main():
     cp.random.seed(args.seed)
 
     # data
-    if args.env == 'mnist':
+    if args.env == 'gaussian':
+        train_data, test_data = get_gaussian()
+        input_dim = 1000
+        output_dim = 10
+    elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
         input_dim = 28 * 28
         output_dim = 10
@@ -129,7 +134,7 @@ def main():
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
     # model
-    from models.cerebellum import Cerebellum
+    from model.cerebellum import Cerebellum
     model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
 
     # train

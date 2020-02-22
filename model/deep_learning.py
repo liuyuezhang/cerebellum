@@ -1,4 +1,4 @@
-from .functional import *
+from .functions import *
 
 
 class Serial:
