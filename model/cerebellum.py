@@ -12,7 +12,7 @@ class Cerebellum:
         # Granule cells
         if args.granule == 'fc':
             self.gc = granule.FC(m=input_dim, n=args.n_hidden,)
-        elif args.granule_connect == 'lc':
+        elif args.granule == 'lc':
             self.gc = granule.LC(m=input_dim, n=args.n_hidden, p=args.p)
 
         # Purkinje cells
