@@ -1,9 +1,9 @@
 import argparse
 import wandb
+from utils import *
 
 import numpy as np
 import cupy as cp
-
 import chainer.functions as F
 
 from data.gaussian import get_gaussian
@@ -138,13 +138,13 @@ def main():
     model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
 
     # train
-    test(args, model, test_iter, 0)
-    for epoch in range(1, args.epoch + 1):
-        train(args, model, train_iter, epoch)
-        test(args, model, test_iter, epoch)
+    # test(args, model, test_iter, 0)
+    # for epoch in range(1, args.epoch + 1):
+    #     train(args, model, train_iter, epoch)
+    #     test(args, model, test_iter, epoch)
 
     # save
-    model.save(dir=wandb.run.dir)
+    save(model, path=wandb.run.dir + '/model.pkl')
 
 
 if __name__ == '__main__':
