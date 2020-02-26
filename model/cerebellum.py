@@ -14,6 +14,8 @@ class Cerebellum:
             self.gc = granule.FC(m=input_dim, n=args.n_hidden,)
         elif args.granule == 'lc':
             self.gc = granule.LC(m=input_dim, n=args.n_hidden, p=args.p)
+        elif args.granule == 'rand':
+            self.gc = granule.Rand(m=input_dim, n=args.n_hidden, p=args.p)
 
         # Purkinje cells
         if args.purkinje == 'fc':
