@@ -138,10 +138,10 @@ def main():
     model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
 
     # train
-    # test(args, model, test_iter, 0)
-    # for epoch in range(1, args.epoch + 1):
-    #     train(args, model, train_iter, epoch)
-    #     test(args, model, test_iter, epoch)
+    test(args, model, test_iter, 0)
+    for epoch in range(1, args.epoch + 1):
+        train(args, model, train_iter, epoch)
+        test(args, model, test_iter, epoch)
 
     # save
     save(model, path=wandb.run.dir + '/model.pkl')
