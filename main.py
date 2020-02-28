@@ -11,14 +11,19 @@ from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
 from chainer.backends.cuda import to_cpu
+from chainer import serializers
 
 
-def train(args, model, train_iter, epoch):
+def train(args, model, embedding, train_iter, epoch):
     train_iter.reset()  # reset (reshuffle)
     for train_batch in train_iter:
         data, label = concat_examples(train_batch, args.gpu_id)
         target = cp.zeros((10, 1))
         target[label] = 1
+
+        # embedding
+        if args.embedding:
+            data = embedding.embed(data)
 
         # model
         output = model.forward(data)
@@ -37,7 +42,7 @@ def train(args, model, train_iter, epoch):
                 wandb.log({"train_loss": loss, "batch": (epoch - 1) * len(train_iter.dataset) + batch_idx})
 
 
-def test(args, model, test_iter, epoch):
+def test(args, model, embedding, test_iter, epoch):
     test_losses = []
     test_accuracies = []
 
@@ -46,6 +51,10 @@ def test(args, model, test_iter, epoch):
         data, label = concat_examples(test_batch, args.gpu_id)
         target = cp.zeros((10, 1))
         target[label] = 1
+
+        # embedding
+        if args.embedding:
+            data = embedding.embed(data)
 
         # Forward the test data
         output = model.forward(data)
@@ -73,6 +82,7 @@ def main():
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
+    parser.add_argument('--embedding', default=False, action='store_true')
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
                         help='fully, locally or randomly random connected without training.')
     parser.add_argument('--p', type=int, default=4)
@@ -89,12 +99,15 @@ def main():
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--wandb', default=False, action='store_true')
+    parser.add_argument('--save', default=False, action='store_true')
     parser.add_argument('--log-interval', type=int, default=1000)
 
     args = parser.parse_args()
     print(args)
 
     # logger
+    # embedding
+    embed = 'embed' if args.embedding else 'none'
     # granule cell
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
@@ -107,7 +120,7 @@ def main():
     bias = args.ltd + '-' + str(args.bias)
     # learning
     learning = args.learning + '-' + args.optimization
-    name = args.env + '_' + granule + '_' + purkinje + '_' \
+    name = args.env + '_' + embed + '_' + granule + '_' + purkinje + '_' \
            + str(args.n_hidden) + '_' + bias + '_' + learning + '_' + str(args.seed)
     print(name)
     if args.wandb:
@@ -117,19 +130,29 @@ def main():
     np.random.seed(args.seed)
     cp.random.seed(args.seed)
 
-    # data
+    # data and embbeding
     if args.env == 'gaussian':
         train_data, test_data = get_gaussian()
         input_dim = 1000
         output_dim = 10
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
+        embedding = None
         input_dim = 28 * 28
         output_dim = 10
     elif args.env == 'cifar10':
-        train_data, test_data = get_cifar10(withlabel=True, ndim=1)
-        input_dim = 32 * 32 * 3
-        output_dim = 10
+        if args.embedding:
+            train_data, test_data = get_cifar10(withlabel=True, ndim=3)
+            from embedding.ae import AE
+            embedding = AE(size=(32, 32), in_channels=3).to_gpu(args.gpu_id)
+            serializers.load_npz('./res/' + args.env + '.model', embedding)
+            input_dim = 8 * 15 * 15
+            output_dim = 10
+        else:
+            train_data, test_data = get_cifar10(withlabel=True, ndim=1)
+            embedding = None
+            input_dim = 3 * 32 * 32
+            output_dim = 10
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
@@ -138,13 +161,14 @@ def main():
     model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
 
     # train
-    test(args, model, test_iter, 0)
+    test(args, model, embedding, test_iter, 0)
     for epoch in range(1, args.epoch + 1):
-        train(args, model, train_iter, epoch)
-        test(args, model, test_iter, epoch)
+        train(args, model, embedding, train_iter, epoch)
+        test(args, model, embedding, test_iter, epoch)
 
     # save
-    save(model, path=wandb.run.dir + '/model.pkl')
+    if args.save:
+        save(model, path=wandb.run.dir + '/model.pkl')
 
 
 if __name__ == '__main__':
