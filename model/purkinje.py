@@ -4,8 +4,8 @@ import cupy as cp
 
 # Purkinje cells
 class FC:
-    def __init__(self, m, n, ltd='none', beta=0.99, bias=False, softmax=False,
-                 optimization='rmsprop', lr=1e-4, alpha=0.99):
+    def __init__(self, m, n, ltd='none', beta=0.99, bias=False,
+                 optimization='rmsprop', lr=1e-4, alpha=0.99, weight_decay=0.0):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
@@ -28,9 +28,6 @@ class FC:
         if self.bias:
             self.b = cp.random.uniform(-stdv, stdv, self.out_shape)
 
-        # nonlinearity
-        self.sofxmax = softmax
-
         # learning (hebbian or gradient)
         self.learning = 'hebbian'
 
@@ -42,6 +39,9 @@ class FC:
             self.r_w = cp.zeros((n, m))
             if self.bias:
                 self.r_b = cp.zeros(self.out_shape)
+
+        # regularization
+        self.C = weight_decay
 
     def forward(self, x):
         # input
@@ -56,12 +56,8 @@ class FC:
         z = self.W @ self.x
         if self.bias:
             z += self.b
-        if self.sofxmax:
-            y = F.softmax(z)
-        else:
-            y = z
         # output
-        self.y = y.reshape(self.out_shape)
+        self.y = z.reshape(self.out_shape)
         return self.y
 
     def backward(self, e):
@@ -72,7 +68,7 @@ class FC:
         if self.bias:
             yb = cp.ones(self.out_shape)
         # optimization
-        g_w = yw * self.e
+        g_w = yw * self.e + self.C * self.W
         if self.bias:
             g_b = yb * self.e
         if self.optimization == 'sgd':

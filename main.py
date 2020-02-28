@@ -4,6 +4,7 @@ from utils import *
 
 import numpy as np
 import cupy as cp
+import chainer
 import chainer.functions as F
 
 from data.gaussian import get_gaussian
@@ -23,7 +24,8 @@ def train(args, model, embedding, train_iter, epoch):
 
         # embedding
         if args.embedding:
-            data = embedding.embed(data)
+            with chainer.no_backprop_mode():
+                data = embedding.embed(data)
 
         # model
         output = model.forward(data)
@@ -54,7 +56,8 @@ def test(args, model, embedding, test_iter, epoch):
 
         # embedding
         if args.embedding:
-            data = embedding.embed(data)
+            with chainer.no_backprop_mode():
+                data = embedding.embed(data)
 
         # Forward the test data
         output = model.forward(data)
@@ -91,11 +94,10 @@ def main():
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--softmax', default=False, action='store_true')
-    parser.add_argument('--learning', type=str, default='hebbian', choices=('hebbian', 'gradient'))
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--alpha', type=float, default=0.99)
+    parser.add_argument('--weight-decay', type=float, default=0.01)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--wandb', default=False, action='store_true')
@@ -114,12 +116,10 @@ def main():
         granule += ('-' + str(args.p))
     # purkinje cell
     purkinje = args.purkinje
-    if args.softmax:
-        purkinje += '-softmax'
     # bias
     bias = args.ltd + '-' + str(args.bias)
     # learning
-    learning = args.learning + '-' + args.optimization
+    learning = args.optimization + '-' + str(args.weight_decay)
     name = args.env + '_' + embed + '_' + granule + '_' + purkinje + '_' \
            + str(args.n_hidden) + '_' + bias + '_' + learning + '_' + str(args.seed)
     print(name)

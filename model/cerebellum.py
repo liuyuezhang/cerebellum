@@ -20,8 +20,9 @@ class Cerebellum:
         # Purkinje cells
         if args.purkinje == 'fc':
             self.pc = purkinje.FC(m=args.n_hidden, n=output_dim,
-                                  ltd=args.ltd, beta=args.beta, bias=args.bias, softmax=args.softmax,
-                                  optimization=args.optimization, lr=args.lr, alpha=args.alpha)
+                                  ltd=args.ltd, beta=args.beta, bias=args.bias,
+                                  optimization=args.optimization, lr=args.lr,
+                                  alpha=args.alpha, weight_decay=args.weight_decay)
 
     def forward(self, x):
         x = self.gc.forward(x)
