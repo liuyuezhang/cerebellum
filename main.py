@@ -97,7 +97,7 @@ def main():
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--alpha', type=float, default=0.99)
-    parser.add_argument('--weight-decay', type=float, default=0.01)
+    parser.add_argument('--weight-decay', type=float, default=0.0)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--wandb', default=False, action='store_true')
