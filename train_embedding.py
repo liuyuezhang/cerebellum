@@ -4,6 +4,7 @@ import numpy as np
 import cupy as cp
 import chainer.functions as F
 
+import chainer
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
@@ -18,6 +19,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=10)
     parser.add_argument('--epoch', type=int, default=2)
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--weight-decay', type=float, default=0.0)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--save', default=False, action='store_true')
@@ -46,6 +48,7 @@ def main():
     # optimizer
     optimizer = optimizers.RMSprop(lr=1e-4)
     optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(args.weight_decay))
 
     # train
     for epoch in range(1, args.epoch + 1):

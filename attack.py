@@ -15,13 +15,13 @@ from chainer.backends.cuda import to_cpu
 from adversarial.fgsm import calc_cerebellum_grad, fgsm
 
 
-def attack(args, model, test_iter, epsilon):
+def test(model, test_iter, epsilon):
     accuracies = []
     perturbed_accuracies = []
 
     test_iter.reset()  # reset
     for test_batch in test_iter:
-        data, label = concat_examples(test_batch, args.gpu_id)
+        data, label = concat_examples(test_batch, 0)
         target = cp.zeros((10, 1))
         target[label] = 1
 
@@ -46,22 +46,20 @@ def attack(args, model, test_iter, epsilon):
 
     print('eps:{:.02f} test_acc:{:.04f} perturbed_acc:{:.04f}'.format(
         epsilon, np.mean(accuracies), np.mean(perturbed_accuracies)))
+    wandb.log({"acc": np.mean(perturbed_accuracies), "eps": epsilon})
 
 
 def main():
     # args
-    name = "mnist_rand-fc_fc_10000_ma-False_hebbian-rmsprop_0"
+    attack = "fgsm"  # 'fgsm', 'bim', 'mim'
+    name = "mnist_fc_fc_20000_none-False_rmsprop_0"
     api = wandb.Api()
     runs = api.runs("liuyuezhang/cerebellum")
     for run in runs:
         if run.name == name:
             id = run.id
             args = Bunch(run.config)
-    print(run.name)
-
-    # seed
-    np.random.seed(args.seed)
-    cp.random.seed(args.seed)
+            print(run.name)
 
     # data
     if args.env == 'gaussian':
@@ -70,15 +68,17 @@ def main():
         test_data = get_mnist(withlabel=True, ndim=1)[1]
     elif args.env == 'cifar10':
         test_data = get_cifar10(withlabel=True, ndim=1)[1]
-    test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
+    test_iter = iterators.MultiprocessIterator(test_data, 1, repeat=False, shuffle=False)
 
-    # model
-    wandb.restore('model.pkl', run_path="liuyuezhang/cerebellum/" + id)
-    model = load()
+    # model todo: you could actually inqury with id in the ./wandb
+    # wandb.restore('model.pkl', run_path="liuyuezhang/cerebellum/" + id)
+    model = load('./model.pkl')
 
-    # attack
-    eps = 0.3
-    attack(args, model, test_iter, eps)
+    # attack and log
+    wandb.init(name=attack + '_' + name, project="cerebellum", entity="liuyuezhang")
+    eps_list = [0.3]
+    for eps in eps_list:
+        test(args, model, test_iter, eps)
 
 
 if __name__ == '__main__':
