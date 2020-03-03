@@ -16,16 +16,19 @@ from chainer import serializers
 
 
 def train(args, model, embedding, train_iter, epoch):
+    train_losses = []
+    train_accuracies = []
+
     train_iter.reset()  # reset (reshuffle)
     for train_batch in train_iter:
         data, label = concat_examples(train_batch, args.gpu_id)
         target = cp.zeros((10, 1))
         target[label] = 1
 
-        # embedding
-        if args.embedding:
-            with chainer.no_backprop_mode():
-                data = embedding.embed(data)
+        # # embedding
+        # if args.embedding:
+        #     with chainer.no_backprop_mode():
+        #         data = embedding.embed(data)
 
         # model
         output = model.forward(data)
@@ -33,15 +36,26 @@ def train(args, model, embedding, train_iter, epoch):
         loss = 0.5 * cp.mean(error ** 2)
         model.backward(error)
 
+        # Calculate the loss
+        train_losses.append(to_cpu(loss))
+
+        # Calculate the accuracy
+        accuracy = F.accuracy(output.reshape(1, -1), label)
+        train_accuracies.append(to_cpu(accuracy.array))
+
         # log
-        loss = to_cpu(loss)
         batch_idx = train_iter.current_position + 1
         if batch_idx % args.log_interval == 0:
+            mean_loss = np.mean(train_losses[-args.log_interval:])
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx, len(train_iter.dataset),
-                100. * batch_idx / len(train_iter.dataset), loss))
+                100. * batch_idx / len(train_iter.dataset),
+                mean_loss))
             if args.wandb:
-                wandb.log({"train_loss": loss, "batch": (epoch - 1) * len(train_iter.dataset) + batch_idx})
+                wandb.log({"train_loss": mean_loss, "batch": (epoch - 1) * len(train_iter.dataset) + batch_idx})
+
+    if args.wandb:
+        wandb.log({"train_acc": np.mean(train_accuracies), "epoch": epoch})
 
 
 def test(args, model, embedding, test_iter, epoch):
@@ -54,10 +68,10 @@ def test(args, model, embedding, test_iter, epoch):
         target = cp.zeros((10, 1))
         target[label] = 1
 
-        # embedding
-        if args.embedding:
-            with chainer.no_backprop_mode():
-                data = embedding.embed(data)
+        # # embedding
+        # if args.embedding:
+        #     with chainer.no_backprop_mode():
+        #         data = embedding.embed(data)
 
         # Forward the test data
         output = model.forward(data)
@@ -85,10 +99,10 @@ def main():
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--embedding', default=False, action='store_true')
+    # parser.add_argument('--embedding', default=False, action='store_true')
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
                         help='fully, locally or randomly random connected without training.')
-    parser.add_argument('--p', type=int, default=4)
+    parser.add_argument('--k', type=int, default=4)
     parser.add_argument('--purkinje', type=str, default='fc')
     parser.add_argument('--n-hidden', type=int, default=5000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
@@ -108,19 +122,19 @@ def main():
     print(args)
 
     # logger
-    # embedding
-    embed = 'embed' if args.embedding else 'none'
+    # # embedding
+    # embed = 'embed' if args.embedding else 'none'
     # granule cell
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
-        granule += ('-' + str(args.p))
+        granule += ('-' + str(args.k))
     # purkinje cell
     purkinje = args.purkinje
     # bias
     bias = args.ltd + '-' + str(args.bias)
     # learning
     learning = args.optimization + '-' + str(args.weight_decay)
-    name = args.env + '_' + embed + '_' + granule + '_' + purkinje + '_' \
+    name = args.env + '_' + '_' + granule + '_' + purkinje + '_' \
            + str(args.n_hidden) + '_' + bias + '_' + learning + '_' + str(args.seed)
     print(name)
     if args.wandb:

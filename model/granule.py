@@ -33,21 +33,21 @@ class FC:
 
 
 class LC:
-    def __init__(self, m, n, p=4):
+    def __init__(self, m, n, k=4):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
-        self.p = p
+        self.k = k
 
         # interface
         self.x = cp.zeros(self.in_shape)
         self.y = cp.zeros(self.out_shape)
 
         # initialization is critical
-        start = np.random.randint(m - p, size=n)
-        self.idx = np.array(F.n_ranges(start, start + p, return_flat=False))
-        stdv = 1. / cp.sqrt(p)
-        self.W = cp.random.uniform(-stdv, stdv, (n, p))
+        start = np.random.randint(m - k, size=n)
+        self.idx = np.array(F.n_ranges(start, start + k, return_flat=False))
+        stdv = 1. / cp.sqrt(k)
+        self.W = cp.random.uniform(-stdv, stdv, (n, k))
 
         # nonlinearity
         self.nonlinear = F.relu
@@ -65,20 +65,20 @@ class LC:
 
 
 class Rand:
-    def __init__(self, m, n, p=4):
+    def __init__(self, m, n, k=4):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
-        self.p = p
+        self.k = k
 
         # interface
         self.x = cp.zeros(self.in_shape)
         self.y = cp.zeros(self.out_shape)
 
         # initialization is critical
-        self.idx = np.random.randint(m, size=(n, p))
-        stdv = 1. / cp.sqrt(p)
-        self.W = cp.random.uniform(-stdv, stdv, (n, p))
+        self.idx = np.random.randint(m, size=(n, k))
+        stdv = 1. / cp.sqrt(k)
+        self.W = cp.random.uniform(-stdv, stdv, (n, k))
 
         # nonlinearity
         self.nonlinear = F.relu

@@ -13,16 +13,16 @@ class Cerebellum:
         if args.granule == 'fc':
             self.gc = granule.FC(m=input_dim, n=args.n_hidden,)
         elif args.granule == 'lc':
-            self.gc = granule.LC(m=input_dim, n=args.n_hidden, p=args.p)
+            self.gc = granule.LC(m=input_dim, n=args.n_hidden, k=args.k)
         elif args.granule == 'rand':
-            self.gc = granule.Rand(m=input_dim, n=args.n_hidden, p=args.p)
+            self.gc = granule.Rand(m=input_dim, n=args.n_hidden, k=args.k)
 
         # Purkinje cells
         if args.purkinje == 'fc':
             self.pc = purkinje.FC(m=args.n_hidden, n=output_dim,
                                   ltd=args.ltd, beta=args.beta, bias=args.bias,
                                   optimization=args.optimization, lr=args.lr,
-                                  alpha=args.alpha, weight_decay=args.weight_decay)
+                                  alpha=args.alpha)
 
     def forward(self, x):
         x = self.gc.forward(x)
