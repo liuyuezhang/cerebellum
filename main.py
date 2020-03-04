@@ -155,18 +155,18 @@ def main():
         input_dim = 28 * 28
         output_dim = 10
     elif args.env == 'cifar10':
-        if args.embedding:
-            train_data, test_data = get_cifar10(withlabel=True, ndim=3)
-            from embedding.ae import AE
-            embedding = AE(size=(32, 32), in_channels=3).to_gpu(args.gpu_id)
-            serializers.load_npz('./res/' + args.env + '.model', embedding)
-            input_dim = 8 * 15 * 15
-            output_dim = 10
-        else:
-            train_data, test_data = get_cifar10(withlabel=True, ndim=1)
-            embedding = None
-            input_dim = 3 * 32 * 32
-            output_dim = 10
+        # if args.embedding:
+        #     train_data, test_data = get_cifar10(withlabel=True, ndim=3)
+        #     from embedding.ae import AE
+        #     embedding = AE(size=(32, 32), in_channels=3).to_gpu(args.gpu_id)
+        #     serializers.load_npz('./res/' + args.env + '.model', embedding)
+        #     input_dim = 8 * 15 * 15
+        #     output_dim = 10
+        # else:
+        train_data, test_data = get_cifar10(withlabel=True, ndim=1)
+        embedding = None
+        input_dim = 3 * 32 * 32
+        output_dim = 10
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
