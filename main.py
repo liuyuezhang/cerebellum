@@ -93,13 +93,13 @@ def test(args, model, embedding, test_iter, epoch):
 
 def main():
     # Training settings
-    parser = argparse.ArgumentParser(description='cerebellum')
+    parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
     parser.add_argument('--batch-size', type=int, default=1)  # todo: batch size
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
-    # parser.add_argument('--embedding', default=False, action='store_true')
+    # parser.add_argument('--embedding', default=False, actionn='store_true')
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
                         help='fully, locally or randomly random connected without training.')
     parser.add_argument('--k', type=int, default=4)
@@ -121,7 +121,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    # logger
+    # name
     # # embedding
     # embed = 'embed' if args.embedding else 'none'
     # granule cell
