@@ -25,11 +25,6 @@ def train(args, model, embedding, train_iter, epoch):
         target = cp.zeros((10, 1))
         target[label] = 1
 
-        # # embedding
-        # if args.embedding:
-        #     with chainer.no_backprop_mode():
-        #         data = embedding.embed(data)
-
         # model
         output = model.forward(data)
         error = output - target
@@ -98,8 +93,6 @@ def main():
     parser.add_argument('--batch-size', type=int, default=1)  # todo: batch size
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
-
-    # parser.add_argument('--embedding', default=False, action='store_true')
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
                         help='fully, locally or randomly random connected without training.')
     parser.add_argument('--k', type=int, default=4)
@@ -120,25 +113,6 @@ def main():
 
     args = parser.parse_args()
     print(args)
-
-    # logger
-    # # embedding
-    # embed = 'embed' if args.embedding else 'none'
-    # granule cell
-    granule = args.granule
-    if args.granule == 'lc' or args.granule == 'rand':
-        granule += ('-' + str(args.k))
-    # purkinje cell
-    purkinje = args.purkinje
-    # bias
-    bias = args.ltd + '-' + str(args.bias)
-    # learning
-    learning = args.optimization + '-' + str(args.weight_decay)
-    name = args.env + '_' + granule + '_' + purkinje + '_' \
-           + str(args.n_hidden) + '-' + str(args.lr) + '_' + bias + '_' + learning + '_' + str(args.seed)
-    print(name)
-    if args.wandb:
-        wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
     # seed
     np.random.seed(args.seed)
@@ -179,10 +153,6 @@ def main():
     for epoch in range(1, args.epoch + 1):
         train(args, model, embedding, train_iter, epoch)
         test(args, model, embedding, test_iter, epoch)
-
-    # save
-    if args.save:
-        save(model, path=wandb.run.dir + '/model.pkl')
 
 
 if __name__ == '__main__':

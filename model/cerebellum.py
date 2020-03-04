@@ -11,7 +11,7 @@ class Cerebellum:
 
         # Granule cells
         if args.granule == 'fc':
-            self.gc = granule.FC(m=input_dim, n=args.n_hidden,)
+            self.gc = granule.FC(m=input_dim, n=args.n_hidden)
         elif args.granule == 'lc':
             self.gc = granule.LC(m=input_dim, n=args.n_hidden, k=args.k)
         elif args.granule == 'rand':
