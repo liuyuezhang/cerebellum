@@ -80,6 +80,7 @@ def main():
     purkinje = args.purkinje
     # bias
     bias = args.ltd + '-' + str(args.bias)
+
     # learning
     learning = args.optimization + '-' + str(args.weight_decay)
     name = args.env + '_' + granule + '_' + purkinje + '_' \
