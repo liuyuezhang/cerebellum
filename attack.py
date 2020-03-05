@@ -47,7 +47,7 @@ def test(args, model, test_iter, epsilon):
             if args.wandb and log_cnt < args.log_num:
                 img = to_cpu(adv_data.reshape(28, 28))
                 wandb.log({"adv examples, eps="+str(epsilon): [wandb.Image(img,
-                    caption='pred:' + str(pred) + ', adv:' + str(adv_pred) + ', label:' + str(label))]})
+                    caption='pred:' + str(pred) + ', adv:' + str(adv_pred) + ', label:' + str(label))]}, commit=False)
                 log_cnt += 1
 
     acc = correct / len(test_iter.dataset)
