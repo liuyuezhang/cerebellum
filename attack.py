@@ -18,7 +18,7 @@ from adversarial.fgsm import calc_cerebellum_grad, fgsm
 
 def test(args, model, test_iter, epsilon):
     correct = 0
-    log_cnt = 0
+    adv_exs = []
 
     test_iter.reset()  # reset
     for test_batch in test_iter:
@@ -44,15 +44,18 @@ def test(args, model, test_iter, epsilon):
             correct += 1
         else:
             # Save some adv examples for visualization later
-            if args.wandb and log_cnt < args.log_num:
+            if len(adv_exs) < args.log_num:
                 img = to_cpu(adv_data.reshape(28, 28))
-                wandb.log({"adv examples, eps="+str(epsilon): [wandb.Image(img,
-                    caption='pred:' + str(pred) + ', adv:' + str(adv_pred) + ', label:' + str(label))]}, commit=False)
-                log_cnt += 1
+                adv_exs.append((img, pred, adv_pred, label))
 
     acc = correct / len(test_iter.dataset)
     print('eps:{:.02f} perturbed_acc:{:.04f}'.format(epsilon, acc))
-    wandb.log({"attack_acc": acc, "eps": epsilon})
+    if args.wandb:
+        wandb.log({"attack_acc": acc, "eps": epsilon})
+        wandb.log({"eps=" + str(epsilon): [wandb.Image(img,
+                                                       caption='pred:' + str(pred) + ', adv:' + str(
+                                                           adv_pred) + ', label:' + str(label))
+                                           for img, pred, adv_pred, label in adv_exs]}, commit=False)
 
 
 def main():
