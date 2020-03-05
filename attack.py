@@ -16,8 +16,9 @@ from chainer.backends.cuda import to_cpu
 from adversarial.fgsm import calc_cerebellum_grad, fgsm
 
 
-def test(model, test_iter, epsilon):
-    accuracies = []
+def test(args, model, test_iter, epsilon):
+    correct = 0
+    log_cnt = 0
 
     test_iter.reset()  # reset
     for test_batch in test_iter:
@@ -27,22 +28,31 @@ def test(model, test_iter, epsilon):
 
         # Forward the test data
         output = model.forward(data)
+        pred = output.argmax()
 
         # Calculate the gradient
         error = output - target
         grad = calc_cerebellum_grad(model, error)
-        perturbed_data = fgsm(data, epsilon, grad)
+        adv_data = fgsm(data, epsilon, grad)
 
         # Forward the test data
-        perturbed_output = model.forward(perturbed_data)
+        adv_output = model.forward(adv_data)
+        adv_pred = adv_output.argmax()
 
         # Calculate the accuracy
-        accuracy = F.accuracy(perturbed_output.reshape(1, -1), label)
-        accuracies.append(to_cpu(accuracy.array))
+        if adv_pred == label:
+            correct += 1
+        else:
+            # Save some adv examples for visualization later
+            if args.wandb and log_cnt < args.log_num:
+                img = to_cpu(adv_data.reshape(28, 28))
+                wandb.log({"adv examples, eps="+str(epsilon): [wandb.Image(img,
+                    caption='pred:' + str(pred) + ', adv:' + str(adv_pred) + ', label:' + str(label))]})
+                log_cnt += 1
 
-    print('eps:{:.02f} perturbed_acc:{:.04f}'.format(
-        epsilon, np.mean(accuracies)))
-    wandb.log({"attack_acc": np.mean(accuracies), "eps": epsilon})
+    acc = correct / len(test_iter.dataset)
+    print('eps:{:.02f} perturbed_acc:{:.04f}'.format(epsilon, acc))
+    wandb.log({"attack_acc": acc, "eps": epsilon})
 
 
 def main():
@@ -67,6 +77,8 @@ def main():
     parser.add_argument('--weight-decay', type=float, default=0.0)
 
     parser.add_argument('--res-dir', type=str, default='./wandb')
+    parser.add_argument('--wandb', default=False, action='store_true')
+    parser.add_argument('--log-num', type=int, default=10)
     args = parser.parse_args()
 
     # name
@@ -104,20 +116,20 @@ def main():
         test_data = get_mnist(withlabel=True, ndim=1)[1]
     elif config.env == 'cifar10':
         test_data = get_cifar10(withlabel=True, ndim=1)[1]
-    test_iter = iterators.MultiprocessIterator(test_data, 1, repeat=False, shuffle=False)
+    test_iter = iterators.MultiprocessIterator(test_data, 1, repeat=False, shuffle=True)
 
-    # model todo: you could actually inqury with id in the ./wandb
-    # wandb.restore('model.pkl', run_path="liuyuezhang/cerebellum/" + id)
+    # model
     for file in os.listdir(args.res_dir):
         if id in file:
             model = load(args.res_dir + '/' + file + '/model.pkl')
             break
 
     # attack and log
-    wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
+    if args.wandb:
+        wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
     eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     for eps in eps_list:
-        test(model, test_iter, eps)
+        test(args, model, test_iter, eps)
 
 
 if __name__ == '__main__':
