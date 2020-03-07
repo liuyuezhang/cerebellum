@@ -22,7 +22,7 @@ class Cerebellum:
             self.pc = purkinje.FC(m=args.n_hidden, n=output_dim,
                                   ltd=args.ltd, beta=args.beta, bias=args.bias,
                                   optimization=args.optimization, lr=args.lr,
-                                  alpha=args.alpha, weight_decay=args.weight_decay)
+                                  alpha=args.alpha, dropout=args.dropout)
 
     def forward(self, x):
         x = self.gc.forward(x)
@@ -31,3 +31,9 @@ class Cerebellum:
 
     def backward(self, e):
         self.pc.backward(e)
+
+    def train(self):
+        self.pc.train = True
+
+    def test(self):
+        self.pc.train = False

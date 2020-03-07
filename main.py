@@ -4,21 +4,19 @@ from utils import *
 
 import numpy as np
 import cupy as cp
-import chainer
-import chainer.functions as F
 
 from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
-from chainer.backends.cuda import to_cpu
 from chainer import serializers
 
 
 def train(args, model, embedding, train_iter, epoch):
+    correct = 0
     train_losses = []
-    train_accuracies = []
 
+    model.train()
     train_iter.reset()  # reset (reshuffle)
     for train_batch in train_iter:
         data, label = concat_examples(train_batch, args.gpu_id)
@@ -30,18 +28,21 @@ def train(args, model, embedding, train_iter, epoch):
         #     with chainer.no_backprop_mode():
         #         data = embedding.embed(data)
 
-        # model
+        # forward
         output = model.forward(data)
+        pred = output.argmax()
         error = output - target
-        loss = 0.5 * cp.mean(error ** 2)
+
+        # backward
         model.backward(error)
 
-        # Calculate the loss
-        train_losses.append(to_cpu(loss))
+        # calculate the loss
+        loss = 0.5 * cp.mean(error ** 2)
+        train_losses.append(cp.asnumpy(loss))
 
-        # Calculate the accuracy
-        accuracy = F.accuracy(output.reshape(1, -1), label)
-        train_accuracies.append(to_cpu(accuracy.array))
+        # calculate the accuracy
+        if pred == label:
+            correct += 1
 
         # log
         batch_idx = train_iter.current_position + 1
@@ -54,14 +55,16 @@ def train(args, model, embedding, train_iter, epoch):
             if args.wandb:
                 wandb.log({"train_loss": mean_loss, "batch": (epoch - 1) * len(train_iter.dataset) + batch_idx})
 
+    acc = correct / len(train_iter.dataset)
     if args.wandb:
-        wandb.log({"train_acc": np.mean(train_accuracies), "epoch": epoch})
+        wandb.log({"train_acc": acc, "epoch": epoch})
 
 
 def test(args, model, embedding, test_iter, epoch):
+    correct = 0
     test_losses = []
-    test_accuracies = []
 
+    model.test()
     test_iter.reset()  # reset
     for test_batch in test_iter:
         data, label = concat_examples(test_batch, args.gpu_id)
@@ -75,20 +78,22 @@ def test(args, model, embedding, test_iter, epoch):
 
         # Forward the test data
         output = model.forward(data)
+        pred = output.argmax()
         error = output - target
-        loss = 0.5 * cp.mean(error ** 2)
 
         # Calculate the loss
-        test_losses.append(to_cpu(loss))
+        loss = 0.5 * cp.mean(error ** 2)
+        test_losses.append(cp.asnumpy(loss))
 
         # Calculate the accuracy
-        accuracy = F.accuracy(output.reshape(1, -1), label)
-        test_accuracies.append(to_cpu(accuracy.array))
+        if pred == label:
+            correct += 1
 
-    print('test_loss:{:.04f} test_accuracy:{:.04f}'.format(
-        np.mean(test_losses), np.mean(test_accuracies)))
+    acc = correct / len(test_iter.dataset)
+    mean_loss = np.mean(test_losses)
+    print('test_loss:{:.04f} test_accuracy:{:.04f}'.format(mean_loss, acc))
     if args.wandb:
-        wandb.log({"test_acc": np.mean(test_accuracies), "epoch": epoch})
+        wandb.log({"test_acc": acc, "epoch": epoch})
 
 
 def main():
@@ -108,10 +113,10 @@ def main():
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
+    parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--alpha', type=float, default=0.99)
-    parser.add_argument('--weight-decay', type=float, default=0.0)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--wandb', default=False, action='store_true')
@@ -128,14 +133,13 @@ def main():
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
         granule += ('-' + str(args.k))
-    # purkinje cell
-    purkinje = args.purkinje
     # bias
     bias = args.ltd + '-' + str(args.bias)
     # learning
-    learning = args.optimization + '-' + str(args.weight_decay)
-    name = args.env + '_' + granule + '_' + purkinje + '_' \
-           + str(args.n_hidden) + '-' + str(args.lr) + '_' + bias + '_' + learning + '_' + str(args.seed)
+    learning = args.optimization
+    name = args.env + '_' + granule + '_' \
+           + str(args.n_hidden) + '-' + str(args.lr) + '_'\
+           + bias + '_' + str(args.dropout) + '_' + learning + '_' + str(args.seed)
     print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)

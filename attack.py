@@ -3,15 +3,12 @@ import os
 import argparse
 from utils import *
 
-import numpy as np
 import cupy as cp
-import chainer.functions as F
 
 from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
-from chainer.backends.cuda import to_cpu
 
 from adversarial.fgsm import calc_cerebellum_grad, fgsm
 
@@ -20,6 +17,7 @@ def test(args, model, test_iter, epsilon):
     correct = 0
     adv_exs = []
 
+    model.test()
     test_iter.reset()  # reset
     for test_batch in test_iter:
         data, label = concat_examples(test_batch, 0)
@@ -29,9 +27,9 @@ def test(args, model, test_iter, epsilon):
         # Forward the test data
         output = model.forward(data)
         pred = output.argmax()
+        error = output - target
 
         # Calculate the gradient
-        error = output - target
         grad = calc_cerebellum_grad(model, error)
         adv_data = fgsm(data, epsilon, grad)
 
@@ -45,7 +43,7 @@ def test(args, model, test_iter, epsilon):
         else:
             # Save some adv examples for visualization later
             if len(adv_exs) < args.log_num:
-                img = to_cpu(adv_data.reshape(28, 28))
+                img = cp.asnumpy(adv_data.reshape(28, 28))
                 adv_exs.append((img, pred, adv_pred, label))
 
     acc = correct / len(test_iter.dataset)

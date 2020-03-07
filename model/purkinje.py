@@ -5,7 +5,7 @@ import cupy as cp
 # Purkinje cells
 class FC:
     def __init__(self, m, n, ltd='none', beta=0.99, bias=False,
-                 optimization='rmsprop', lr=1e-4, alpha=0.99, weight_decay=0.0):
+                 optimization='rmsprop', lr=1e-4, alpha=0.99, dropout=0.0):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
@@ -20,6 +20,10 @@ class FC:
         if self.ltd == 'ma':
             self.ma = cp.zeros(self.in_shape)
             self.beta = beta
+
+        # dropout
+        self.p = dropout
+        self.train = False
 
         # initialization is critical
         stdv = 1. / cp.sqrt(m)
@@ -40,15 +44,19 @@ class FC:
             if self.bias:
                 self.r_b = cp.zeros(self.out_shape)
 
-        # regularization
-        self.C = weight_decay
-
     def forward(self, x):
         # input
         x = x.reshape(self.in_shape)
+        # dropout
+        if self.train:
+            r = cp.random.binomial(n=1, p=self.p, size=self.in_shape)
+            x = x * r
+        else:
+            x = x * self.p
         # ltd
         if self.ltd == 'ma':
-            self.ma = self.beta * self.ma + (1 - self.beta) * x
+            if self.train:
+                self.ma = self.beta * self.ma + (1 - self.beta) * x
             self.x = x - self.ma
         elif self.ltd == 'none':
             self.x = x
@@ -68,7 +76,7 @@ class FC:
         if self.bias:
             yb = cp.ones(self.out_shape)
         # optimization
-        g_w = yw * self.e + self.C * self.W
+        g_w = yw * self.e
         if self.bias:
             g_b = yb * self.e
         if self.optimization == 'sgd':
