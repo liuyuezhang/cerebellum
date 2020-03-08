@@ -72,10 +72,10 @@ def main():
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
+    parser.add_argument('--dropout', type=float, default=1.0)
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--alpha', type=float, default=0.99)
-    parser.add_argument('--weight-decay', type=float, default=0.0)
 
     parser.add_argument('--res-dir', type=str, default='./wandb')
     parser.add_argument('--wandb', default=False, action='store_true')
@@ -89,25 +89,23 @@ def main():
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
         granule += ('-' + str(args.k))
-    # purkinje cell
-    purkinje = args.purkinje
     # bias
     bias = args.ltd + '-' + str(args.bias)
-
     # learning
-    learning = args.optimization + '-' + str(args.weight_decay)
-    name = args.env + '_' + granule + '_' + purkinje + '_' \
-           + str(args.n_hidden) + '-' + str(args.lr) + '_' + bias + '_' + learning + '_' + str(args.seed)
-    print("test name: " + name)
+    learning = args.optimization
+    name = args.env + '_' + granule + '_' \
+           + str(args.n_hidden) + '-' + str(args.lr) + '_' \
+           + bias + '_' + str(args.dropout) + '_' + learning + '_' + str(args.seed)
+    print(name)
 
     # find run
     api = wandb.Api()
     runs = api.runs("liuyuezhang/cerebellum")
     for run in runs:
         if run.name == name:
-            id = run.id
+            run_id = run.id
             config = Bunch(run.config)
-            print("run name: " + run.name)
+            print(run.name)
             break
 
     # data
@@ -121,7 +119,7 @@ def main():
 
     # model
     for file in os.listdir(args.res_dir):
-        if id in file:
+        if run_id in file:
             model = load(args.res_dir + '/' + file + '/model.pkl')
             break
 
