@@ -94,7 +94,7 @@ def main():
     learning = args.optimization
     name = args.env + '_' + granule + '_' \
            + str(args.n_hidden) + '-' + str(args.lr) + '_' \
-           + bias + '_' + str(args.dropout) + '_' + learning + '_' + str(args.seed)
+           + bias + '_' + learning + '_' + str(args.seed)
     print(name)
 
     # find run
