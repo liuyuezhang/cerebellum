@@ -1,3 +1,4 @@
+from model import functions as F
 import cupy as cp
 
 
@@ -19,6 +20,9 @@ class FC:
         if self.ltd == 'ma':
             self.ma = cp.zeros(self.in_shape)
             self.beta = beta
+
+        # non-linearity
+        self.nonlinear = F.relu
 
         # dropout
         self.p = dropout
@@ -53,9 +57,9 @@ class FC:
         if self.ltd == 'ma':
             if self.train:
                 self.ma = self.beta * self.ma + (1 - self.beta) * x
-            self.x = x - self.ma
-        elif self.ltd == 'none':
-            self.x = x
+            x = x - self.ma
+        # nonlinearity
+        self.x = self.nonlinear(x)
         # forward
         z = self.W @ self.x
         if self.bias:
