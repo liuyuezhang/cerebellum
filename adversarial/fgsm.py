@@ -22,4 +22,3 @@ def calc_cerebellum_grad(model, e):
         grad_gc = (relu_derive(model.gc.y) * model.gc.W).T
     grad = grad_gc @ grad_pc
     return grad
-

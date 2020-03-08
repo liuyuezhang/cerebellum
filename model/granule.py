@@ -18,13 +18,17 @@ class FC:
         stdv = 1. / cp.sqrt(m)
         self.W = cp.random.uniform(-stdv, stdv, (n, m))
 
+        # nonlinearity
+        self.nonlinear = F.relu
+
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape)
         # forward
         z = self.W @ self.x
+        y = self.nonlinear(z)
         # output
-        self.y = z.reshape(self.out_shape)
+        self.y = y.reshape(self.out_shape)
         return self.y
 
 
@@ -45,14 +49,18 @@ class LC:
         stdv = 1. / cp.sqrt(k)
         self.W = cp.random.uniform(-stdv, stdv, (n, k))
 
+        # nonlinearity
+        self.nonlinear = F.relu
+
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape)
         # forward
         x_idx = self.x.squeeze(axis=1)[self.idx]
         z = cp.sum(self.W * x_idx, axis=1, keepdims=True)
+        y = self.nonlinear(z)
         # output
-        self.y = z.reshape(self.out_shape)
+        self.y = y.reshape(self.out_shape)
         return self.y
 
 
@@ -72,12 +80,16 @@ class Rand:
         stdv = 1. / cp.sqrt(k)
         self.W = cp.random.uniform(-stdv, stdv, (n, k))
 
+        # nonlinearity
+        self.nonlinear = F.relu
+
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape)
         # forward
         x_idx = self.x.squeeze(axis=1)[self.idx]
         z = cp.sum(self.W * x_idx, axis=1, keepdims=True)
+        y = self.nonlinear(z)
         # output
-        self.y = z.reshape(self.out_shape)
+        self.y = y.reshape(self.out_shape)
         return self.y

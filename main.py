@@ -112,7 +112,6 @@ def main():
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--dropout', type=float, default=1.0)
     parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--alpha', type=float, default=0.99)
@@ -137,7 +136,7 @@ def main():
     learning = args.optimization
     name = args.env + '_' + granule + '_' \
            + str(args.n_hidden) + '-' + str(args.lr) + '_'\
-           + bias + '_' + str(args.dropout) + '_' + learning + '_' + str(args.seed)
+           + bias + '_' + learning + '_' + str(args.seed)
     print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)

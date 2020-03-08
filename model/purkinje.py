@@ -1,11 +1,10 @@
-from model import functions as F
 import cupy as cp
 
 
 # Purkinje cells
 class FC:
     def __init__(self, m, n, ltd='none', beta=0.99, bias=False,
-                 optimization='rmsprop', lr=1e-4, alpha=0.99, dropout=0.0):
+                 optimization='rmsprop', lr=1e-4, alpha=0.99):
         # shape
         self.in_shape = (m, 1)
         self.out_shape = (n, 1)
@@ -21,11 +20,7 @@ class FC:
             self.ma = cp.zeros(self.in_shape)
             self.beta = beta
 
-        # non-linearity
-        self.nonlinear = F.relu
-
         # dropout
-        self.p = dropout
         self.train = False
 
         # initialization is critical
@@ -47,19 +42,13 @@ class FC:
     def forward(self, x):
         # input
         x = x.reshape(self.in_shape)
-        # dropout
-        if self.train:
-            r = cp.random.binomial(n=1, p=self.p, size=self.in_shape)
-            x = x * r
-        else:
-            x = x * self.p
         # ltd
         if self.ltd == 'ma':
             if self.train:
                 self.ma = self.beta * self.ma + (1 - self.beta) * x
-            x = x - self.ma
-        # nonlinearity
-        self.x = self.nonlinear(x)
+            self.x = x - self.ma
+        elif self.ltd == 'none':
+            self.x = x
         # forward
         z = self.W @ self.x
         if self.bias:
