@@ -1,4 +1,3 @@
-from model import functions as F
 import cupy as cp
 
 
@@ -31,9 +30,6 @@ class FC:
         self.bias = bias
         if self.bias:
             self.b = cp.random.uniform(-stdv, stdv, self.out_shape)
-
-        # learning (hebbian or gradient)
-        self.learning = 'hebbian'
 
         # optimization
         self.optimization = optimization
