@@ -16,9 +16,17 @@ def fgsm(x, epsilon, grad):
     return perturbed_x
 
 
+# def calc_cerebellum_grad(model, e):
+#     grad_pc = model.pc.W.T @ e
+#     if model.args.granule == 'fc':
+#         grad_gc = (relu_derive(model.gc.y) * model.gc.W).T
+#     grad = grad_gc @ grad_pc
+#     return grad
+
+
 def calc_cerebellum_grad(model, e):
-    grad_pc = model.pc.W.T @ e
+    grad_pc = (relu_derive(model.pc.x) * model.pc.W).T @ e
     if model.args.granule == 'fc':
-        grad_gc = (relu_derive(model.gc.y) * model.gc.W).T
+        grad_gc = model.gc.W.T
     grad = grad_gc @ grad_pc
     return grad
