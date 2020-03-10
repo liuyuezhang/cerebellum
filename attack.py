@@ -13,14 +13,14 @@ from chainer.dataset import concat_examples
 from adversarial.fgsm import calc_cerebellum_grad, fgsm
 
 
-def test(args, model, test_iter, epsilon):
+def test(args, epsilon, test_iter, model):
     correct = 0
     adv_exs = []
 
     model.test()
     test_iter.reset()  # reset
     for test_batch in test_iter:
-        data, label = concat_examples(test_batch, 0)
+        data, label = concat_examples(test_batch, args.gpu_id)
         target = cp.zeros((10, 1))
         target[label] = 1
 
@@ -63,7 +63,6 @@ def main():
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
     parser.add_argument('--seed', type=int, default=0)
 
-    # parser.add_argument('--embedding', default=False, actionn='store_true')
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
                         help='fully, locally or randomly random connected without training.')
     parser.add_argument('--k', type=int, default=4)
@@ -76,14 +75,13 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--alpha', type=float, default=0.99)
 
+    parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--res-dir', type=str, default='./wandb')
     parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--log-num', type=int, default=10)
     args = parser.parse_args()
 
     # name
-    # # embedding
-    # embed = 'embed' if args.embedding else 'none'
     # granule cell
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
@@ -127,7 +125,7 @@ def main():
         wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
     eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     for eps in eps_list:
-        test(args, model, test_iter, eps)
+        test(args, eps, test_iter, model)
 
 
 if __name__ == '__main__':

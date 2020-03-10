@@ -9,10 +9,9 @@ from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators
 from chainer.dataset import concat_examples
-from chainer import serializers
 
 
-def train(args, model, embedding, train_iter, epoch):
+def train(args, epoch, train_iter, model):
     correct = 0
     train_losses = []
 
@@ -22,11 +21,6 @@ def train(args, model, embedding, train_iter, epoch):
         data, label = concat_examples(train_batch, args.gpu_id)
         target = cp.zeros((10, 1))
         target[label] = 1
-
-        # # embedding
-        # if args.embedding:
-        #     with chainer.no_backprop_mode():
-        #         data = embedding.embed(data)
 
         # forward
         output = model.forward(data)
@@ -60,7 +54,7 @@ def train(args, model, embedding, train_iter, epoch):
         wandb.log({"train_acc": acc, "epoch": epoch})
 
 
-def test(args, model, embedding, test_iter, epoch):
+def test(args, epoch, test_iter, model):
     correct = 0
     test_losses = []
 
@@ -70,11 +64,6 @@ def test(args, model, embedding, test_iter, epoch):
         data, label = concat_examples(test_batch, args.gpu_id)
         target = cp.zeros((10, 1))
         target[label] = 1
-
-        # # embedding
-        # if args.embedding:
-        #     with chainer.no_backprop_mode():
-        #         data = embedding.embed(data)
 
         # Forward the test data
         output = model.forward(data)
@@ -103,7 +92,6 @@ def main():
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
-    # parser.add_argument('--embedding', default=False, actionn='store_true')
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
                         help='fully, locally or randomly random connected without training.')
     parser.add_argument('--k', type=int, default=4)
@@ -124,8 +112,6 @@ def main():
     print(args)
 
     # name
-    # # embedding
-    # embed = 'embed' if args.embedding else 'none'
     # granule cell
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
@@ -145,27 +131,17 @@ def main():
     np.random.seed(args.seed)
     cp.random.seed(args.seed)
 
-    # data and embbeding
+    # data
     if args.env == 'gaussian':
         train_data, test_data = get_gaussian()
         input_dim = 1000
         output_dim = 10
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
-        embedding = None
         input_dim = 28 * 28
         output_dim = 10
     elif args.env == 'cifar10':
-        # if args.embedding:
-        #     train_data, test_data = get_cifar10(withlabel=True, ndim=3)
-        #     from embedding.ae import AE
-        #     embedding = AE(size=(32, 32), in_channels=3).to_gpu(args.gpu_id)
-        #     serializers.load_npz('./res/' + args.env + '.model', embedding)
-        #     input_dim = 8 * 15 * 15
-        #     output_dim = 10
-        # else:
         train_data, test_data = get_cifar10(withlabel=True, ndim=1)
-        embedding = None
         input_dim = 3 * 32 * 32
         output_dim = 10
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
@@ -176,10 +152,10 @@ def main():
     model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
 
     # train
-    test(args, model, embedding, test_iter, 0)
+    test(args, 0, test_iter, model)
     for epoch in range(1, args.epoch + 1):
-        train(args, model, embedding, train_iter, epoch)
-        test(args, model, embedding, test_iter, epoch)
+        train(args, epoch, train_iter, model)
+        test(args, epoch, test_iter, model)
 
     # save
     if args.save:
