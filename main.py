@@ -117,6 +117,8 @@ def main():
     granule = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
         granule += ('-' + str(args.k))
+    if args.golgi:
+        granule += '-inhibit'
     # bias
     bias = args.ltd + '-' + str(args.bias)
     # learning
