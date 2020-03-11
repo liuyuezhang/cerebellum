@@ -1,5 +1,6 @@
 import cupy as cp
 import numpy as np
+import model.functions as F
 
 
 # Granule cells and Golgi cells
@@ -21,8 +22,7 @@ class FixFC:
         # input
         self.x = x.reshape(self.in_shape)
         # forward
-        z = self.W @ self.x
-        y = self.nonlinear(z)
+        y = self.W @ self.x
         # output
         self.y = y.reshape(self.out_shape)
         return self.y
@@ -45,16 +45,12 @@ class FixLC:
         stdv = 1. / cp.sqrt(k)
         self.W = cp.random.uniform(-stdv, stdv, (n, k))
 
-        # nonlinearity
-        self.nonlinear = F.relu
-
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape)
         # forward
         x_idx = self.x.squeeze(axis=1)[self.idx]
-        z = cp.sum(self.W * x_idx, axis=1, keepdims=True)
-        y = self.nonlinear(z)
+        y = cp.sum(self.W * x_idx, axis=1, keepdims=True)
         # output
         self.y = y.reshape(self.out_shape)
         return self.y
@@ -76,16 +72,12 @@ class FixRand:
         stdv = 1. / cp.sqrt(k)
         self.W = cp.random.uniform(-stdv, stdv, (n, k))
 
-        # nonlinearity
-        self.nonlinear = F.relu
-
     def forward(self, x):
         # input
         self.x = x.reshape(self.in_shape)
         # forward
         x_idx = self.x.squeeze(axis=1)[self.idx]
-        z = cp.sum(self.W * x_idx, axis=1, keepdims=True)
-        y = self.nonlinear(z)
+        y = cp.sum(self.W * x_idx, axis=1, keepdims=True)
         # output
         self.y = y.reshape(self.out_shape)
         return self.y
