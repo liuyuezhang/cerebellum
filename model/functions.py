@@ -2,27 +2,12 @@ import cupy as cp
 import numpy as np
 
 
-def sigmoid(x):
-    return 1/(1 + cp.exp(-x))
-
-
-def sigmoid_derive(x):
-    return x * (1 - x)
-
-
-def relu(x):
-    return x * (x > 0)
-
-
-def relu_derive(x):
-    return x > 0
-
-
-def softmax(x):
-    """Compute the softmax of vector x in a numerically stable way."""
-    x = x - cp.max(x)
-    exps = cp.exp(x)
-    return exps / cp.sum(exps)
+def one_hot(label, out_size, dtype):
+    xp = cp.get_array_module(label)
+    batch_size = len(label)
+    target = xp.zeros((batch_size, out_size), dtype=dtype)
+    target[xp.arange(batch_size), xp.array(label)] = 1
+    return target
 
 
 def n_ranges(start, end, return_flat=True):

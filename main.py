@@ -1,47 +1,52 @@
-import argparse
-import wandb
-from utils import *
-
 import numpy as np
 import cupy as cp
 
+import chainer
+import chainer.functions as F
+import model.functions as f
+
 from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
-from chainer import iterators
+from chainer import iterators, optimizers, serializers
 from chainer.dataset import concat_examples
+from chainer.backends.cuda import to_cpu
+
+import argparse
+import wandb
 
 
-def train(args, epoch, train_iter, model):
-    correct = 0
-    train_losses = []
+def train(args, epoch, train_iter, model, optimizer):
+    accuracies = []
+    losses = []
+    last_idx = 0
 
-    model.train()
+    chainer.config.train = True
     train_iter.reset()  # reset (reshuffle)
     for train_batch in train_iter:
         data, label = concat_examples(train_batch, args.gpu_id)
-        target = cp.zeros((10, 1))
-        target[label] = 1
 
         # forward
         output = model.forward(data)
-        pred = output.argmax()
-        error = output - target
+        target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
+        loss = F.mean_squared_error(output, target)
 
         # backward
-        model.backward(error)
+        model.cleargrads()
+        loss.backward()
 
-        # calculate the loss
-        loss = 0.5 * cp.mean(error ** 2)
-        train_losses.append(cp.asnumpy(loss))
+        # update
+        optimizer.update()
 
-        # calculate the accuracy
-        if pred == label:
-            correct += 1
+        # accuracy
+        accuracy = F.accuracy(output, label)
+        accuracies.append(to_cpu(accuracy.array))
+        losses.append(to_cpu(loss.array))
 
         # log
         batch_idx = train_iter.current_position + 1
-        if batch_idx % args.log_interval == 0:
-            mean_loss = np.mean(train_losses[-args.log_interval:])
+        if batch_idx - last_idx >= args.log_interval:
+            last_idx = batch_idx
+            mean_loss = np.mean(losses[-args.log_interval:])
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx, len(train_iter.dataset),
                 100. * batch_idx / len(train_iter.dataset),
@@ -49,51 +54,40 @@ def train(args, epoch, train_iter, model):
             if args.wandb:
                 wandb.log({"train_loss": mean_loss, "batch": (epoch - 1) * len(train_iter.dataset) + batch_idx})
 
-    acc = correct / len(train_iter.dataset)
     if args.wandb:
-        wandb.log({"train_acc": acc, "epoch": epoch})
+        wandb.log({"train_acc": np.mean(accuracies), "epoch": epoch})
 
 
 def test(args, epoch, test_iter, model):
-    correct = 0
-    test_losses = []
+    accuracies = []
 
-    model.test()
+    chainer.config.train = False
     test_iter.reset()  # reset
     for test_batch in test_iter:
-        data, label = concat_examples(test_batch, args.gpu_id)
-        target = cp.zeros((10, 1))
-        target[label] = 1
+        with chainer.no_backprop_mode():
+            data, label = concat_examples(test_batch, args.gpu_id)
 
-        # Forward the test data
-        output = model.forward(data)
-        pred = output.argmax()
-        error = output - target
+            # forward
+            output = model.forward(data)
 
-        # Calculate the loss
-        loss = 0.5 * cp.mean(error ** 2)
-        test_losses.append(cp.asnumpy(loss))
+            # accuracy
+            accuracy = F.accuracy(output, label)
+            accuracies.append(to_cpu(accuracy.array))
 
-        # Calculate the accuracy
-        if pred == label:
-            correct += 1
-
-    acc = correct / len(test_iter.dataset)
-    mean_loss = np.mean(test_losses)
-    print('test_loss:{:.04f} test_accuracy:{:.04f}'.format(mean_loss, acc))
+    print('test_accuracy:{:.04f}'.format(np.mean(accuracies)))
     if args.wandb:
-        wandb.log({"test_acc": acc, "epoch": epoch})
+        wandb.log({"test_acc": np.mean(accuracies), "epoch": epoch})
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
-    parser.add_argument('--batch-size', type=int, default=1)  # todo: batch size
+    parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
-                        help='fully, locally or randomly random connected without training.')
+    parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rc'),
+                        help='fully, locally or randomly connected without training.')
     parser.add_argument('--k', type=int, default=4)
     parser.add_argument('--golgi', default=False, action='store_true')
     parser.add_argument('--purkinje', type=str, default='fc')
@@ -101,9 +95,7 @@ def main():
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
-    parser.add_argument('--alpha', type=float, default=0.99)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--wandb', default=False, action='store_true')
@@ -113,19 +105,12 @@ def main():
     print(args)
 
     # name
-    # granule cell
-    granule = args.granule
+    method = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
-        granule += ('-' + str(args.k))
+        method += ('-' + str(args.k))
     if args.golgi:
-        granule += '-inhibit'
-    # bias
-    bias = args.ltd + '-' + str(args.bias)
-    # learning
-    learning = args.optimization
-    name = args.env + '_' + granule + '_' \
-           + str(args.n_hidden) + '-' + str(args.lr) + '_'\
-           + bias + '_' + learning + '_' + str(args.seed)
+        method += '-inhibit'
+    name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '-' + str(args.lr) + '_' + str(args.seed)
     print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
@@ -137,32 +122,39 @@ def main():
     # data
     if args.env == 'gaussian':
         train_data, test_data = get_gaussian()
-        input_dim = 1000
-        output_dim = 10
+        in_size = 1000
+        out_size = 10
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
-        input_dim = 28 * 28
-        output_dim = 10
+        in_size = 28 * 28
+        out_size = 10
     elif args.env == 'cifar10':
         train_data, test_data = get_cifar10(withlabel=True, ndim=1)
-        input_dim = 3 * 32 * 32
-        output_dim = 10
+        in_size = 3 * 32 * 32
+        out_size = 10
+    else:
+        raise NotImplementedError
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
     # model
     from model.cerebellum import Cerebellum
-    model = Cerebellum(input_dim=input_dim, output_dim=output_dim, args=args)
+    model = Cerebellum(in_size=in_size, out_size=out_size, args=args)
+    if args.gpu_id >= 0:
+        model.to_gpu(args.gpu_id)
+
+    # optimizer
+    optimizer = optimizers.RMSprop(lr=args.lr, alpha=0.99)
+    optimizer.setup(model.purkinje)
 
     # train
-    test(args, 0, test_iter, model)
     for epoch in range(1, args.epoch + 1):
-        train(args, epoch, train_iter, model)
+        train(args, epoch, train_iter, model, optimizer)
         test(args, epoch, test_iter, model)
 
     # save
     if args.save:
-        save(model, path=wandb.run.dir + '/model.pkl')
+        serializers.save_npz(wandb.run.dir + '/model.pkl', model)
 
 
 if __name__ == '__main__':

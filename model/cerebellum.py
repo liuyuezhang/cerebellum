@@ -1,54 +1,63 @@
-from model import layers as L
-from model import functions as F
+import chainer
+import chainer.functions as F
+import chainer.links as L
+import model.layers as l
 
 
 # Cerebellum
-class Cerebellum:
-    def __init__(self, input_dim, output_dim, args):
-        self.input_dim = input_dim
-        self.output_dim = output_dim
+class Cerebellum(chainer.Chain):
+    def __init__(self, in_size, out_size, args):
+        super(Cerebellum, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
         self.args = args
 
-        # Nonlinearity
-        self.nonlinear = F.relu
-
-        # Granule cells
-        if args.granule == 'fc':
-            self.granule = L.FixFC(m=input_dim, n=args.n_hidden)
-        elif args.granule == 'lc':
-            self.granule = L.FixLC(m=input_dim, n=args.n_hidden, k=args.k)
-        elif args.granule == 'rand':
-            self.granule = L.FixRand(m=input_dim, n=args.n_hidden, k=args.k)
-
-        # Golgi cells
-        if args.golgi:
+        with self.init_scope():
+            # Granule cells
             if args.granule == 'fc':
-                self.golgi = L.FixFC(m=input_dim, n=args.n_hidden)
+                self.granule = L.Linear(in_size, args.n_hidden, nobias=not args.bias)
             elif args.granule == 'lc':
-                self.golgi = L.FixLC(m=input_dim, n=args.n_hidden, k=args.k)
-            elif args.granule == 'rand':
-                self.golgi = L.FixRand(m=input_dim, n=args.n_hidden, k=args.k)
+                self.granule = l.LC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
+            elif args.granule == 'rc':
+                self.granule = l.RC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
 
-        # Purkinje cells
-        if args.purkinje == 'fc':
-            self.purkinje = L.FC(m=args.n_hidden, n=output_dim,
-                                 ltd=args.ltd, beta=args.beta, bias=args.bias,
-                                 optimization=args.optimization, lr=args.lr, alpha=args.alpha)
+            # Golgi cells
+            if args.golgi:
+                if args.granule == 'fc':
+                    self.golgi = L.Linear(in_size, args.n_hidden, nobias=not args.bias)
+                elif args.granule == 'lc':
+                    self.golgi = l.LC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
+                elif args.granule == 'rc':
+                    self.golgi = l.RC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
+            else:
+                self.golgi = None
 
-    def forward(self, x):
-        if self.args.golgi:
-            x = self.granule.forward(x) - self.golgi.forward(x)
+            # Nonlinearity
+            self.nonlinear = F.relu
+
+            # Long Term Depression
+            if args.ltd == 'ma':
+                self.norm = l.MA(beta=args.beta)
+            else:
+                self.norm = None
+
+            # Purkinje cells
+            self.purkinje = L.Linear(args.n_hidden, out_size, nobias=not args.bias)
+
+    def forward(self, x, attack=False):
+        if not attack:
+            with chainer.no_backprop_mode():
+                z = self.project(x)
         else:
-            x = self.granule.forward(x)
-        x = self.nonlinear(x)
-        x = self.purkinje.forward(x)
-        return x
+            z = self.project(x)
+        y = self.purkinje.forward(z)
+        return y
 
-    def backward(self, e):
-        self.purkinje.backward(e)
-
-    def train(self):
-        self.purkinje.train = True
-
-    def test(self):
-        self.purkinje.train = False
+    def project(self, x):
+        z = self.granule.forward(x)
+        if self.golgi is not None:
+            z = z - self.golgi.forward(x)
+        y = self.nonlinear(z)
+        if self.norm is not None:
+            y = self.norm(y)
+        return y

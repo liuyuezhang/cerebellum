@@ -1,41 +1,52 @@
-import wandb
-import os
-import argparse
-from utils import *
-
 import cupy as cp
+
+import chainer
+import chainer.functions as F
+import model.functions as f
+from chainer import Variable
 
 from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
-from chainer import iterators
+from chainer import iterators, serializers
 from chainer.dataset import concat_examples
 
-from adversarial.fgsm import calc_cerebellum_grad, fgsm
+from adversarial.attack import fgsm
+import wandb
+import os
+import argparse
+
+
+class Bunch(object):
+    def __init__(self, adict):
+        self.__dict__.update(adict)
 
 
 def test(args, epsilon, test_iter, model):
     correct = 0
     adv_exs = []
 
-    model.test()
+    chainer.config.train = False
     test_iter.reset()  # reset
     for test_batch in test_iter:
         data, label = concat_examples(test_batch, args.gpu_id)
-        target = cp.zeros((10, 1))
-        target[label] = 1
+
+        # Require grads
+        data = Variable(data)
 
         # Forward the test data
-        output = model.forward(data)
-        pred = output.argmax()
-        error = output - target
+        output = model.forward(data, attack=True)
+        target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
+        pred = output.data.argmax()
 
         # Calculate the gradient
-        grad = calc_cerebellum_grad(model, error)
-        adv_data = fgsm(data, epsilon, grad)
+        loss = F.mean_squared_error(output, target)
+        model.cleargrads()
+        loss.backward()
+        adv_data = fgsm(data.data, epsilon, data.grad)
 
         # Forward the test data
         adv_output = model.forward(adv_data)
-        adv_pred = adv_output.argmax()
+        adv_pred = adv_output.data.argmax()
 
         # Calculate the accuracy
         if adv_pred == label:
@@ -63,17 +74,16 @@ def main():
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
     parser.add_argument('--seed', type=int, default=0)
 
-    parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rand'),
-                        help='fully, locally or randomly random connected without training.')
+    parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rc'),
+                        help='fully, locally or randomly connected without training.')
     parser.add_argument('--k', type=int, default=4)
+    parser.add_argument('--golgi', default=False, action='store_true')
     parser.add_argument('--purkinje', type=str, default='fc')
     parser.add_argument('--n-hidden', type=int, default=5000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
     parser.add_argument('--beta', type=float, default=0.99)
     parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--optimization', type=str, default='rmsprop', choices=('sgd', 'rmsprop'))
     parser.add_argument('--lr', type=float, default=1e-4)
-    parser.add_argument('--alpha', type=float, default=0.99)
 
     parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
     parser.add_argument('--res-dir', type=str, default='./wandb')
@@ -82,17 +92,13 @@ def main():
     args = parser.parse_args()
 
     # name
-    # granule cell
-    granule = args.granule
+    method = args.granule
     if args.granule == 'lc' or args.granule == 'rand':
-        granule += ('-' + str(args.k))
-    # bias
-    bias = args.ltd + '-' + str(args.bias)
-    # learning
-    learning = args.optimization
-    name = args.env + '_' + granule + '_' \
-           + str(args.n_hidden) + '-' + str(args.lr) + '_' \
-           + bias + '_' + learning + '_' + str(args.seed)
+        method += ('-' + str(args.k))
+    if args.golgi:
+        method += '-inhibit'
+    name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '-' + str(args.lr) + '_' + str(
+        args.seed)
     print(name)
 
     # find run
@@ -108,22 +114,37 @@ def main():
     # data
     if config.env == 'gaussian':
         test_data = get_gaussian()[1]
+        in_size = 1000
+        out_size = 10
     elif config.env == 'mnist':
         test_data = get_mnist(withlabel=True, ndim=1)[1]
+        in_size = 28 * 28
+        out_size = 10
     elif config.env == 'cifar10':
         test_data = get_cifar10(withlabel=True, ndim=1)[1]
+        in_size = 3 * 32 * 32
+        out_size = 10
+    else:
+        raise NotImplementedError
     test_iter = iterators.MultiprocessIterator(test_data, 1, repeat=False, shuffle=True)
 
     # model
+    from model.cerebellum import Cerebellum
+    model = Cerebellum(in_size=in_size, out_size=out_size, args=config)
+    if args.gpu_id >= 0:
+        model.to_gpu(args.gpu_id)
+
+    # load
     for file in os.listdir(args.res_dir):
         if run_id in file:
-            model = load(args.res_dir + '/' + file + '/model.pkl')
+            serializers.load_npz(args.res_dir + '/' + file + '/model.pkl', model)
             break
 
     # attack and log
     if args.wandb:
         wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
-    eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    # eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    eps_list = [0]
     for eps in eps_list:
         test(args, eps, test_iter, model)
 
