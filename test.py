@@ -131,8 +131,6 @@ def main():
     # model
     from model.cerebellum import Cerebellum
     model = Cerebellum(in_size=in_size, out_size=out_size, args=config)
-    if args.gpu_id >= 0:
-        model.to_gpu(args.gpu_id)
 
     # load
     for file in os.listdir(args.res_dir):
@@ -140,11 +138,14 @@ def main():
             serializers.load_npz(args.res_dir + '/' + file + '/model.pkl', model)
             break
 
+    # device
+    if args.gpu_id >= 0:
+        model.to_gpu(args.gpu_id)
+
     # attack and log
     if args.wandb:
         wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
-    # eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-    eps_list = [0]
+    eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     for eps in eps_list:
         test(args, eps, test_iter, model)
 

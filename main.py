@@ -82,7 +82,7 @@ def test(args, epoch, test_iter, model):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
-    parser.add_argument('--batch-size', type=int, default=16)
+    parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=10)
     parser.add_argument('--seed', type=int, default=0)
 
@@ -140,6 +140,8 @@ def main():
     # model
     from model.cerebellum import Cerebellum
     model = Cerebellum(in_size=in_size, out_size=out_size, args=args)
+
+    # device
     if args.gpu_id >= 0:
         model.to_gpu(args.gpu_id)
 
