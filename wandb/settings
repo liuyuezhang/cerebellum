@@ -1,0 +1,5 @@
+[default]
+project = cerebellum
+entity = liuyuezhang
+ignore_globs = model.pkl
+

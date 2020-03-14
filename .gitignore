@@ -1,5 +1,5 @@
 # res
-wandb/
+wandb/run*
 res/
 
 # PyCharm
