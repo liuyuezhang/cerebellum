@@ -53,7 +53,7 @@ def test(args, epsilon, test_iter, model):
             correct += 1
         else:
             # Save some adv examples for visualization later
-            if len(adv_exs) < args.log_num:
+            if len(adv_exs) < args.log_adv_num:
                 img = cp.asnumpy(adv_data.reshape(28, 28))
                 adv_exs.append((img, pred, adv_pred, label))
 
@@ -70,30 +70,11 @@ def test(args, epsilon, test_iter, model):
 def main():
     # args
     parser = argparse.ArgumentParser()
-    parser.add_argument('--attack', type=str, default='fgsm', choices=('fgsm', 'bim', 'mim'))
-    parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
-    parser.add_argument('--seed', type=int, default=0)
-
-    parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rc'),
-                        help='fully, locally or randomly connected without training.')
-    parser.add_argument('--k', type=int, default=4)
-    parser.add_argument('--golgi', default=False, action='store_true')
-    parser.add_argument('--purkinje', type=str, default='fc')
-    parser.add_argument('--n-hidden', type=int, default=5000)
-    parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
-    parser.add_argument('--beta', type=float, default=0.99)
-    parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--lr', type=float, default=1e-4)
-
-    parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
-    parser.add_argument('--res-dir', type=str, default='./wandb')
-    parser.add_argument('--wandb', default=False, action='store_true')
-    parser.add_argument('--log-num', type=int, default=10)
     args = parser.parse_args()
 
     # name
     method = args.granule
-    if args.granule == 'lc' or args.granule == 'rand':
+    if args.granule == 'lc' or args.granule == 'rc':
         method += ('-' + str(args.k))
     if args.golgi:
         method += '-inhibit'

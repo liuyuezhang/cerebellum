@@ -11,7 +11,7 @@ from chainer import iterators, optimizers, serializers
 from chainer.dataset import concat_examples
 from chainer.backends.cuda import to_cpu
 
-import argparse
+from param import get_parser
 import wandb
 
 
@@ -57,6 +57,8 @@ def train(args, epoch, train_iter, model, optimizer):
     if args.wandb:
         wandb.log({"train_acc": np.mean(accuracies), "epoch": epoch})
 
+    return np.mean(accuracies)
+
 
 def test(args, epoch, test_iter, model):
     accuracies = []
@@ -78,35 +80,17 @@ def test(args, epoch, test_iter, model):
     if args.wandb:
         wandb.log({"test_acc": np.mean(accuracies), "epoch": epoch})
 
+    return np.mean(accuracies)
+
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='mnist', choices=('mnist', 'cifar10'))
-    parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--epoch', type=int, default=10)
-    parser.add_argument('--seed', type=int, default=0)
-
-    parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rc'),
-                        help='fully, locally or randomly connected without training.')
-    parser.add_argument('--k', type=int, default=4)
-    parser.add_argument('--golgi', default=False, action='store_true')
-    parser.add_argument('--purkinje', type=str, default='fc')
-    parser.add_argument('--n-hidden', type=int, default=5000)
-    parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
-    parser.add_argument('--beta', type=float, default=0.99)
-    parser.add_argument('--bias', default=False, action='store_true')
-    parser.add_argument('--lr', type=float, default=1e-4)
-
-    parser.add_argument('--gpu-id', type=int, default=0, help='cpu: -1')
-    parser.add_argument('--wandb', default=False, action='store_true')
-    parser.add_argument('--save', default=False, action='store_true')
-    parser.add_argument('--log-interval', type=int, default=1000)
+    parser = get_parser()
     args = parser.parse_args()
     print(args)
 
     # name
     method = args.granule
-    if args.granule == 'lc' or args.granule == 'rand':
+    if args.granule == 'lc' or args.granule == 'rc':
         method += ('-' + str(args.k))
     if args.golgi:
         method += '-inhibit'
@@ -146,17 +130,32 @@ def main():
         model.to_gpu(args.gpu_id)
 
     # optimizer
-    optimizer = optimizers.RMSprop(lr=args.lr, alpha=0.99)
+    if args.optimizer == 'rmsprop':
+        optimizer = optimizers.RMSprop(lr=args.lr, alpha=0.99)
+    elif args.optimizer == 'sgd':
+        optimizer = optimizers.SGD(lr=args.lr)
+    else:
+        raise NotImplementedError
     optimizer.setup(model.purkinje)
 
     # train
+    best_train_acc = 0
+    best_test_acc = 0
     for epoch in range(1, args.epoch + 1):
-        train(args, epoch, train_iter, model, optimizer)
-        test(args, epoch, test_iter, model)
+        train_acc = train(args, epoch, train_iter, model, optimizer)
+        test_acc = test(args, epoch, test_iter, model)
+        if train_acc > best_train_acc:
+            best_train_acc = train_acc
+        if test_acc > best_test_acc:
+            best_test_acc = test_acc
+            # save
+            if args.save:
+                serializers.save_npz(wandb.run.dir + '/model.pkl', model)
 
-    # save
-    if args.save:
-        serializers.save_npz(wandb.run.dir + '/model.pkl', model)
+    print('best_train_accuracy:{:.04f}'.format(best_train_acc))
+    print('best_test_accuracy:{:.04f}'.format(best_test_acc))
+    if args.wandb:
+        wandb.log({"best_train_acc": best_train_acc, "best_test_acc": best_test_acc})
 
 
 if __name__ == '__main__':
