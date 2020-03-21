@@ -13,7 +13,7 @@ from chainer.dataset import concat_examples
 from adversarial.attack import fgsm
 import wandb
 import os
-import argparse
+from param import get_parser
 
 
 class Bunch(object):
@@ -66,10 +66,12 @@ def test(args, epsilon, test_iter, model):
                                                            adv_pred) + ', label:' + str(label))
                                            for img, pred, adv_pred, label in adv_exs]}, commit=False)
 
+    return acc
+
 
 def main():
     # args
-    parser = argparse.ArgumentParser()
+    parser = get_parser()
     args = parser.parse_args()
 
     # name
@@ -128,7 +130,11 @@ def main():
         wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
     eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     for eps in eps_list:
-        test(args, eps, test_iter, model)
+        acc = test(args, eps, test_iter, model)
+
+    print('max_attack_acc:{:.04f}'.format(acc))
+    if args.wandb:
+        wandb.log({"max_attack_acc": acc})
 
 
 if __name__ == '__main__':
