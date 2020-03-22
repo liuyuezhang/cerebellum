@@ -77,11 +77,8 @@ def main():
     # name
     method = args.granule
     if args.granule == 'lc' or args.granule == 'rc':
-        method += ('-' + str(args.k))
-    if args.golgi:
-        method += '-inhibit'
-    name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '-' + str(args.lr) + '_' + str(
-        args.seed)
+        method += ('-' + str(args.k) + '-' + str(args.golgi))
+    name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '_' + str(args.seed)
     print(name)
 
     # find run
@@ -127,7 +124,7 @@ def main():
 
     # attack and log
     if args.wandb:
-        wandb.init(name=args.attack + '_' + name, project="cerebellum", entity="liuyuezhang")
+        wandb.init(name=args.attack + '-' + name, project="cerebellum", entity="liuyuezhang")
     eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     for eps in eps_list:
         acc = test(args, eps, test_iter, model)

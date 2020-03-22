@@ -91,10 +91,8 @@ def main():
     # name
     method = args.granule
     if args.granule == 'lc' or args.granule == 'rc':
-        method += ('-' + str(args.k))
-    if args.golgi:
-        method += '-inhibit'
-    name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '-' + str(args.lr) + '_' + str(args.seed)
+        method += ('-' + str(args.k) + '-' + str(args.golgi))
+    name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '_' + str(args.seed)
     print(name)
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)

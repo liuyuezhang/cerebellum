@@ -12,7 +12,7 @@ def get_parser():
     parser.add_argument('--granule', type=str, default='fc', choices=('fc', 'lc', 'rc'),
                         help='fully, locally or randomly connected without training.')
     parser.add_argument('--k', type=int, default=4)
-    parser.add_argument('--golgi', default=False, action='store_true')
+    parser.add_argument('--golgi', type=str, default='none', choices=('none', 'inhibit'))
     parser.add_argument('--purkinje', type=str, default='fc')
     parser.add_argument('--n-hidden', type=int, default=5000)
     parser.add_argument('--ltd', type=str, default='none', choices=('none', 'ma'))
