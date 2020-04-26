@@ -1,16 +1,14 @@
 import cupy as cp
 
 import chainer
-import chainer.functions as F
 import model.functions as f
-from chainer import Variable
 
 from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators, serializers
 from chainer.dataset import concat_examples
 
-from adversarial.attack import fgsm
+from adversarial.attack import fgsm, bim
 import wandb
 import os
 from param import get_parser
@@ -30,19 +28,18 @@ def test(args, epsilon, test_iter, model):
     for test_batch in test_iter:
         data, label = concat_examples(test_batch, args.gpu_id)
 
-        # Require grads
-        data = Variable(data)
-
         # Forward the test data
-        output = model.forward(data, attack=True)
+        output = model.forward(data)
         target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
         pred = output.data.argmax()
 
-        # Calculate the gradient
-        loss = F.mean_squared_error(output, target)
-        model.cleargrads()
-        loss.backward()
-        adv_data = fgsm(data.data, epsilon, data.grad)
+        # Attack
+        if args.attack == 'fgsm':
+            adv_data = fgsm(model, data, target, epsilon)
+        elif args.attack == 'bim':
+            adv_data = bim(model, data, target, epsilon, steps=20)
+        else:
+            raise NotImplementedError
 
         # Forward the test data
         adv_output = model.forward(adv_data)
