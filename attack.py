@@ -19,7 +19,7 @@ class Bunch(object):
         self.__dict__.update(adict)
 
 
-def test(args, epsilon, test_iter, model):
+def test(args, eps, test_iter, model):
     correct = 0
     adv_exs = []
 
@@ -35,9 +35,11 @@ def test(args, epsilon, test_iter, model):
 
         # Attack
         if args.attack == 'fgsm':
-            adv_data = fgsm(model, data, target, epsilon)
+            adv_data = fgsm(model, data, target, eps)
         elif args.attack == 'bim':
-            adv_data = bim(model, data, target, epsilon, steps=20)
+            adv_data = bim(model, data, target, eps, steps=20, random_start=False)
+        elif args.attack == 'pgd':
+            adv_data = bim(model, data, target, eps, steps=20, random_start=True)
         else:
             raise NotImplementedError
 
@@ -55,13 +57,13 @@ def test(args, epsilon, test_iter, model):
                 adv_exs.append((img, pred, adv_pred, label))
 
     acc = correct / len(test_iter.dataset)
-    print('eps:{:.02f} perturbed_acc:{:.04f}'.format(epsilon, acc))
+    print('eps:{:.02f} perturbed_acc:{:.04f}'.format(eps, acc))
     if args.wandb:
-        wandb.log({"attack_acc": acc, "eps": epsilon})
-        wandb.log({"eps=" + str(epsilon): [wandb.Image(img,
-                                                       caption='pred:' + str(pred) + ', adv:' + str(
-                                                           adv_pred) + ', label:' + str(label))
-                                           for img, pred, adv_pred, label in adv_exs]}, commit=False)
+        wandb.log({"attack_acc": acc, "eps": eps})
+        wandb.log({"eps=" + str(eps): [wandb.Image(img, caption='pred:' + str(pred)
+                                                                + ', adv:' + str(adv_pred)
+                                                                + ', label:' + str(label))
+                                       for img, pred, adv_pred, label in adv_exs]}, commit=False)
 
     return acc
 
