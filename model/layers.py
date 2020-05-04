@@ -38,7 +38,7 @@ class LC(Link):
         self.no_bias = no_bias
 
         with self.init_scope():
-            start = np.random.randint(in_size - k, size=out_size)
+            start = np.random.randint(in_size - k + 1, size=out_size)
             self.idx = np.array(f.n_ranges(start, start + k, return_flat=False))
             self.W = chainer.Parameter(
                 initializers.Normal(1. / math.sqrt(in_size)),

@@ -3,12 +3,11 @@ import cupy as cp
 import chainer
 import model.functions as f
 
-from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators, serializers
 from chainer.dataset import concat_examples
 
-from adversarial.attack import fgsm, bim
+from adversarial.attack import random, fgsm, pgd
 import wandb
 import os
 from param import get_parser
@@ -34,12 +33,12 @@ def test(args, eps, test_iter, model):
         pred = output.data.argmax()
 
         # Attack
-        if args.attack == 'fgsm':
+        if args.attack == 'random':
+            adv_data = random(data, eps)
+        elif args.attack == 'fgsm':
             adv_data = fgsm(model, data, target, eps)
-        elif args.attack == 'bim':
-            adv_data = bim(model, data, target, eps, steps=20, random_start=False)
         elif args.attack == 'pgd':
-            adv_data = bim(model, data, target, eps, steps=20, random_start=True)
+            adv_data = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True)
         else:
             raise NotImplementedError
 
@@ -91,11 +90,7 @@ def main():
             break
 
     # data
-    if config.env == 'gaussian':
-        test_data = get_gaussian()[1]
-        in_size = 1000
-        out_size = 10
-    elif config.env == 'mnist':
+    if config.env == 'mnist':
         test_data = get_mnist(withlabel=True, ndim=1)[1]
         in_size = 28 * 28
         out_size = 10
@@ -123,7 +118,7 @@ def main():
 
     # attack and log
     if args.wandb:
-        wandb.init(name=args.attack + '-' + name, project="cerebellum", entity="liuyuezhang")
+        wandb.init(name=args.attack + '-' + name, project="cerebellum", entity="liuyuezhang", config=args)
     eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     for eps in eps_list:
         acc = test(args, eps, test_iter, model)
