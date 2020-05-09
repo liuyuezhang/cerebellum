@@ -91,7 +91,7 @@ def main():
     # name
     method = args.granule
     if args.granule == 'lc' or args.granule == 'rc':
-        method += ('-' + str(args.k) + '-' + str(args.golgi))
+        method += ('-' + str(args.k))
     name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '_' + str(args.seed)
     print(name)
     if args.wandb:

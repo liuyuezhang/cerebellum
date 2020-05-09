@@ -21,17 +21,6 @@ class Cerebellum(chainer.Chain):
             elif args.granule == 'rc':
                 self.granule = l.RC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
 
-            # Golgi cells
-            if args.golgi:
-                if args.granule == 'fc':
-                    self.golgi = L.Linear(in_size, args.n_hidden, nobias=not args.bias)
-                elif args.granule == 'lc':
-                    self.golgi = l.LC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
-                elif args.granule == 'rc':
-                    self.golgi = l.RC(in_size, args.n_hidden, args.k, no_bias=not args.bias)
-            else:
-                self.golgi = None
-
             # Nonlinearity
             self.nonlinear = F.relu
 
@@ -55,8 +44,6 @@ class Cerebellum(chainer.Chain):
 
     def project(self, x):
         z = self.granule.forward(x)
-        if self.golgi is not None:
-            z = z - self.golgi.forward(x)
         y = self.nonlinear(z)
         if self.norm is not None:
             y = self.norm(y)

@@ -52,7 +52,10 @@ def test(args, eps, test_iter, model):
         else:
             # Save some adv examples for visualization later
             if len(adv_exs) < args.log_adv_num:
-                img = cp.asnumpy(adv_data.reshape(28, 28))
+                if args.env == 'mnist':
+                    img = cp.asnumpy(adv_data.reshape(28, 28))
+                elif args.env == 'cifar10':
+                    img = cp.asnumpy(adv_data.reshape(3, 32, 32).swapaxes(0, 2))
                 adv_exs.append((img, pred, adv_pred, label))
 
     acc = correct / len(test_iter.dataset)
@@ -75,7 +78,7 @@ def main():
     # name
     method = args.granule
     if args.granule == 'lc' or args.granule == 'rc':
-        method += ('-' + str(args.k) + '-' + str(args.golgi))
+        method += ('-' + str(args.k))
     name = args.env + '_' + method + '_' + args.ltd + '_' + str(args.n_hidden) + '_' + str(args.seed)
     print(name)
 
@@ -119,7 +122,12 @@ def main():
     # attack and log
     if args.wandb:
         wandb.init(name=args.attack + '-' + name, project="cerebellum", entity="liuyuezhang", config=args)
-    eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    if args.env == 'mnist':
+        eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    elif args.env == 'cifar10':
+        eps_list = [0, 2/255, 4/255, 6/255, 8/255]
+    else:
+        raise NotImplementedError
     for eps in eps_list:
         acc = test(args, eps, test_iter, model)
 
