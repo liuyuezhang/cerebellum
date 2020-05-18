@@ -27,7 +27,10 @@ def train(args, epoch, train_iter, model, optimizer):
 
         # forward
         output = model.forward(data)
-        target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
+        if args.env == 'gaussian':
+            target = cp.array(label.reshape(output.shape), dtype=output.dtype)
+        else:
+            target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
         loss = F.mean_squared_error(output, target)
 
         # backward
@@ -38,8 +41,13 @@ def train(args, epoch, train_iter, model, optimizer):
         optimizer.update()
 
         # accuracy
-        accuracy = F.accuracy(output, label)
-        accuracies.append(to_cpu(accuracy.array))
+        if args.env == 'gaussian':
+            pred = int(np.sign(output.item()))
+            accuracy = 1 if pred == label.item() else 0
+            accuracies.append(accuracy)
+        else:
+            accuracy = F.accuracy(output, label)
+            accuracies.append(to_cpu(accuracy.array))
         losses.append(to_cpu(loss.array))
 
         # log
@@ -73,8 +81,13 @@ def test(args, epoch, test_iter, model):
             output = model.forward(data)
 
             # accuracy
-            accuracy = F.accuracy(output, label)
-            accuracies.append(to_cpu(accuracy.array))
+            if args.env == 'gaussian':
+                pred = int(np.sign(output.item()))
+                accuracy = 1 if pred == label.item() else 0
+                accuracies.append(accuracy)
+            else:
+                accuracy = F.accuracy(output, label)
+                accuracies.append(to_cpu(accuracy.array))
 
     print('test_accuracy:{:.04f}'.format(np.mean(accuracies)))
     if args.wandb:
@@ -97,15 +110,13 @@ def main():
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
-    # seed
-    np.random.seed(args.seed)
-    cp.random.seed(args.seed)
-
     # data
     if args.env == 'gaussian':
-        train_data, test_data = get_gaussian()
-        in_size = 1000
-        out_size = 10
+        data = get_gaussian(d=500, n=1000, mu=0.5, sigma=1, seed=args.seed)
+        train_data = data
+        test_data = data
+        in_size = 100
+        out_size = 1
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
         in_size = 28 * 28
@@ -116,6 +127,11 @@ def main():
         out_size = 10
     else:
         raise NotImplementedError
+
+    # seed
+    np.random.seed(args.seed)
+    cp.random.seed(args.seed)
+
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
 
