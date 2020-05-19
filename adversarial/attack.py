@@ -5,16 +5,17 @@ from chainer import Variable
 
 
 # Random noise
-def random(data, eps):
+def random(data, eps, clip=True):
     # attack
     x = data + cp.random.uniform(-eps, +eps, data.shape, dtype=cp.float32)
     # clip
-    x = cp.clip(x, 0, 1)
+    if clip:
+        x = cp.clip(x, 0, 1)
     return x
 
 
 # FGSM
-def fgsm(model, data, target, eps):
+def fgsm(model, data, target, eps, clip=True):
     # initialize
     x = data
 
@@ -32,12 +33,13 @@ def fgsm(model, data, target, eps):
     x = x0.data + eps * cp.sign(grad)
 
     # clip
-    x = cp.clip(x, 0, 1)
+    if clip:
+        x = cp.clip(x, 0, 1)
     return x
 
 
 # BIM / PGD attack (random_start = False / True)
-def pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True):
+def pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=True):
     # initialize
     if random_start:
         x = data + cp.random.uniform(-eps, +eps, data.shape, dtype=cp.float32)
@@ -60,6 +62,8 @@ def pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True):
 
         # clip
         eta = cp.clip(x - data, -eps, +eps)
-        x = cp.clip(data + eta, 0, 1)
+        x = data + eta
+        if clip:
+            x = cp.clip(x, 0, 1)
 
     return x

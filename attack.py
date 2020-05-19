@@ -1,8 +1,10 @@
+import numpy as np
 import cupy as cp
 
 import chainer
 import model.functions as f
 
+from data.gaussian import get_gaussian
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators, serializers
 from chainer.dataset import concat_examples
@@ -29,29 +31,37 @@ def test(args, eps, test_iter, model):
 
         # Forward the test data
         output = model.forward(data)
-        target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
-        pred = output.data.argmax()
+        if args.env == 'gaussian1':
+            target = cp.array(label.reshape(output.shape), dtype=output.dtype)
+            pred = int(np.sign(output.item()))
+        else:
+            target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
+            pred = output.data.argmax()
 
         # Attack
+        clip = False if args.env.startswith('gaussian') else True
         if args.attack == 'random':
-            adv_data = random(data, eps)
+            adv_data = random(data, eps, clip=clip)
         elif args.attack == 'fgsm':
-            adv_data = fgsm(model, data, target, eps)
+            adv_data = fgsm(model, data, target, eps, clip=clip)
         elif args.attack == 'pgd':
-            adv_data = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True)
+            adv_data = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=clip)
         else:
             raise NotImplementedError
 
         # Forward the test data
         adv_output = model.forward(adv_data)
-        adv_pred = adv_output.data.argmax()
+        if args.env == 'gaussian1':
+            adv_pred = int(np.sign(adv_output.item()))
+        else:
+            adv_pred = adv_output.data.argmax()
 
         # Calculate the accuracy
         if adv_pred == label:
             correct += 1
         else:
             # Save some adv examples for visualization later
-            if len(adv_exs) < args.log_adv_num:
+            if args.save_img and len(adv_exs) < args.log_adv_num:
                 if args.env == 'mnist':
                     img = cp.asnumpy(adv_data.reshape(28, 28))
                 elif args.env == 'cifar10':
@@ -62,10 +72,11 @@ def test(args, eps, test_iter, model):
     print('eps:{:.02f} perturbed_acc:{:.04f}'.format(eps, acc))
     if args.wandb:
         wandb.log({"attack_acc": acc, "eps": eps})
-        wandb.log({"eps=" + str(eps): [wandb.Image(img, caption='pred:' + str(pred)
-                                                                + ', adv:' + str(adv_pred)
-                                                                + ', label:' + str(label))
-                                       for img, pred, adv_pred, label in adv_exs]}, commit=False)
+        if args.save_img:
+            wandb.log({"eps=" + str(eps): [wandb.Image(img, caption='pred:' + str(pred)
+                                                                    + ', adv:' + str(adv_pred)
+                                                                    + ', label:' + str(label))
+                                           for img, pred, adv_pred, label in adv_exs]}, commit=False)
 
     return acc
 
@@ -93,7 +104,17 @@ def main():
             break
 
     # data
-    if config.env == 'mnist':
+    if config.env == 'gaussian1':
+        data = get_gaussian(d=500, n=1000, c=1, mu=0.5, sigma=1, seed=args.seed)
+        test_data = data
+        in_size = 500
+        out_size = 1
+    elif config.env == 'gaussian2':
+        data = get_gaussian(d=500, n=1000, c=2, mu=0.5, sigma=1, seed=args.seed)
+        test_data = data
+        in_size = 500
+        out_size = 2
+    elif config.env == 'mnist':
         test_data = get_mnist(withlabel=True, ndim=1)[1]
         in_size = 28 * 28
         out_size = 10
@@ -103,6 +124,11 @@ def main():
         out_size = 10
     else:
         raise NotImplementedError
+
+    # seed
+    np.random.seed(config.seed)
+    cp.random.seed(config.seed)
+
     test_iter = iterators.MultiprocessIterator(test_data, 1, repeat=False, shuffle=True)
 
     # model
@@ -122,7 +148,9 @@ def main():
     # attack and log
     if args.wandb:
         wandb.init(name=args.attack + '-' + name, project="cerebellum", entity="liuyuezhang", config=args)
-    if args.env == 'mnist':
+    if args.env.startswith('gaussian'):
+        eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    elif args.env == 'mnist':
         eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     elif args.env == 'cifar10':
         eps_list = [0, 2/255, 4/255, 6/255, 8/255]

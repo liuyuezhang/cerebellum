@@ -27,7 +27,7 @@ def train(args, epoch, train_iter, model, optimizer):
 
         # forward
         output = model.forward(data)
-        if args.env == 'gaussian':
+        if args.env == 'gaussian1':
             target = cp.array(label.reshape(output.shape), dtype=output.dtype)
         else:
             target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
@@ -41,7 +41,7 @@ def train(args, epoch, train_iter, model, optimizer):
         optimizer.update()
 
         # accuracy
-        if args.env == 'gaussian':
+        if args.env == 'gaussian1':
             pred = int(np.sign(output.item()))
             accuracy = 1 if pred == label.item() else 0
             accuracies.append(accuracy)
@@ -81,7 +81,7 @@ def test(args, epoch, test_iter, model):
             output = model.forward(data)
 
             # accuracy
-            if args.env == 'gaussian':
+            if args.env == 'gaussian1':
                 pred = int(np.sign(output.item()))
                 accuracy = 1 if pred == label.item() else 0
                 accuracies.append(accuracy)
@@ -111,12 +111,18 @@ def main():
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
     # data
-    if args.env == 'gaussian':
-        data = get_gaussian(d=500, n=1000, mu=0.5, sigma=1, seed=args.seed)
+    if args.env == 'gaussian1':
+        data = get_gaussian(d=500, n=1000, c=1, mu=0.5, sigma=1, seed=args.seed)
         train_data = data
         test_data = data
-        in_size = 100
+        in_size = 500
         out_size = 1
+    elif args.env == 'gaussian2':
+        data = get_gaussian(d=500, n=1000, c=2, mu=0.5, sigma=1, seed=args.seed)
+        train_data = data
+        test_data = data
+        in_size = 500
+        out_size = 2
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
         in_size = 28 * 28
@@ -165,6 +171,9 @@ def main():
             # save
             if args.save:
                 serializers.save_npz(wandb.run.dir + '/model.pkl', model)
+            # early stopping
+            if best_test_acc >= 1:
+                break
 
     print('best_train_accuracy:{:.04f}'.format(best_train_acc))
     print('best_test_accuracy:{:.04f}'.format(best_test_acc))
