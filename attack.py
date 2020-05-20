@@ -105,12 +105,12 @@ def main():
 
     # data
     if config.env == 'gaussian1':
-        data = get_gaussian(d=500, n=1000, c=1, mu=0.5, sigma=1, seed=args.seed)
+        data = get_gaussian(d=500, n=1000, c=1, mu=0.5, sigma=1, seed=config.seed)
         test_data = data
         in_size = 500
         out_size = 1
     elif config.env == 'gaussian2':
-        data = get_gaussian(d=500, n=1000, c=2, mu=0.5, sigma=1, seed=args.seed)
+        data = get_gaussian(d=500, n=1000, c=2, mu=0.5, sigma=1, seed=config.seed)
         test_data = data
         in_size = 500
         out_size = 2

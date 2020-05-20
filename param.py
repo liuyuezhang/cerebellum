@@ -3,7 +3,7 @@ import argparse
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='mnist', choices=('gaussian1', 'gaussian2', 'mnist', 'cifar10'))
+    parser.add_argument('--env', type=str, default='mnist', choices=('gaussian1', 'gaussian2', 'mnist1', 'mnist', 'cifar10'))
     parser.add_argument('--attack', type=str, default='fgsm', choices=('random', 'fgsm', 'pgd'))
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--epoch', type=int, default=10)

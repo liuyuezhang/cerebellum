@@ -6,6 +6,7 @@ import chainer.functions as F
 import model.functions as f
 
 from data.gaussian import get_gaussian
+from data.mnist1 import get_mnist1
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators, optimizers, serializers
 from chainer.dataset import concat_examples
@@ -27,7 +28,7 @@ def train(args, epoch, train_iter, model, optimizer):
 
         # forward
         output = model.forward(data)
-        if args.env == 'gaussian1':
+        if args.env.endswith('1'):
             target = cp.array(label.reshape(output.shape), dtype=output.dtype)
         else:
             target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
@@ -41,7 +42,7 @@ def train(args, epoch, train_iter, model, optimizer):
         optimizer.update()
 
         # accuracy
-        if args.env == 'gaussian1':
+        if args.env.endswith('1'):
             pred = int(np.sign(output.item()))
             accuracy = 1 if pred == label.item() else 0
             accuracies.append(accuracy)
@@ -81,7 +82,7 @@ def test(args, epoch, test_iter, model):
             output = model.forward(data)
 
             # accuracy
-            if args.env == 'gaussian1':
+            if args.env.endswith('1'):
                 pred = int(np.sign(output.item()))
                 accuracy = 1 if pred == label.item() else 0
                 accuracies.append(accuracy)
@@ -123,6 +124,12 @@ def main():
         test_data = data
         in_size = 500
         out_size = 2
+    elif args.env == 'mnist1':
+        data = get_mnist1()
+        train_data = data
+        test_data = data
+        in_size = 28 * 28
+        out_size = 1
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
         in_size = 28 * 28
