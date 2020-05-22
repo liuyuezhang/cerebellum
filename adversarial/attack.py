@@ -35,11 +35,13 @@ def fgsm(model, data, target, eps, clip=True):
     # clip
     if clip:
         x = cp.clip(x, 0, 1)
-    return x
+    return x, grad
 
 
 # BIM / PGD attack (random_start = False / True)
 def pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=True):
+    grad_info = []
+
     # initialize
     if random_start:
         x = data + cp.random.uniform(-eps, +eps, data.shape, dtype=cp.float32)
@@ -65,5 +67,7 @@ def pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=
         x = data + eta
         if clip:
             x = cp.clip(x, 0, 1)
+
+        grad_info.append(grad)
 
     return x

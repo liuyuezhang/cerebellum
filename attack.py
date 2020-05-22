@@ -22,7 +22,12 @@ class Bunch(object):
 
 def test(args, eps, test_iter, model):
     correct = 0
-    adv_exs = []
+    datas = []
+    outputs = []
+    adv_datas = []
+    adv_outputs = []
+    grad_infos = []
+    labels = []
 
     chainer.config.train = False
     test_iter.reset()  # reset
@@ -33,19 +38,17 @@ def test(args, eps, test_iter, model):
         output = model.forward(data)
         if args.env.endswith('1'):
             target = cp.array(label.reshape(output.shape), dtype=output.dtype)
-            pred = int(np.sign(output.item()))
         else:
             target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
-            pred = output.data.argmax()
 
         # Attack
         clip = False if args.env.startswith('gaussian') else True
         if args.attack == 'random':
             adv_data = random(data, eps, clip=clip)
         elif args.attack == 'fgsm':
-            adv_data = fgsm(model, data, target, eps, clip=clip)
+            adv_data, grad_info = fgsm(model, data, target, eps, clip=clip)
         elif args.attack == 'pgd':
-            adv_data = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=clip)
+            adv_data, grad_info = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=clip)
         else:
             raise NotImplementedError
 
@@ -59,24 +62,22 @@ def test(args, eps, test_iter, model):
         # Calculate the accuracy
         if adv_pred == label:
             correct += 1
-        else:
-            # Save some adv examples for visualization later
-            if args.save_img and len(adv_exs) < args.log_adv_num:
-                if args.env.startswith('mnist'):
-                    img = cp.asnumpy(adv_data.reshape(28, 28))
-                elif args.env == 'cifar10':
-                    img = cp.asnumpy(adv_data.reshape(3, 32, 32).swapaxes(0, 2))
-                adv_exs.append((img, pred, adv_pred, label))
+        if args.save:
+            datas.append(cp.asnumpy(data))
+            outputs.append(cp.asnumpy(output.array))
+            adv_datas.append(cp.asnumpy(adv_data))
+            adv_outputs.append(cp.asnumpy(adv_output.array))
+            grad_infos.append(cp.asnumpy(grad_info))
+            labels.append(label)
 
     acc = correct / len(test_iter.dataset)
     print('eps:{:.02f} perturbed_acc:{:.04f}'.format(eps, acc))
     if args.wandb:
         wandb.log({"attack_acc": acc, "eps": eps})
-        if args.save_img:
-            wandb.log({"eps=" + str(eps): [wandb.Image(img, caption='pred:' + str(pred)
-                                                                    + ', adv:' + str(adv_pred)
-                                                                    + ', label:' + str(label))
-                                           for img, pred, adv_pred, label in adv_exs]}, commit=False)
+    if args.save and (eps == 0.1 or eps == 0.3):
+        np.savez(wandb.run.dir + '/data_' + str(eps), data=np.array(datas), output=np.array(outputs),
+                 adv_data=np.array(adv_datas), adv_output=np.array(adv_outputs),
+                 grad_info=np.array(grad_infos), label=np.array(labels))
 
     return acc
 

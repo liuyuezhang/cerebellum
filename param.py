@@ -26,5 +26,4 @@ def get_parser():
     parser.add_argument('--log-adv-num', type=int, default=10)
     parser.add_argument('--wandb', default=False, action='store_true')
     parser.add_argument('--save', default=False, action='store_true')
-    parser.add_argument('--save-img', default=False, action='store_true')
     return parser

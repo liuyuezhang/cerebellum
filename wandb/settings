@@ -1,5 +1,5 @@
 [default]
 project = cerebellum
 entity = liuyuezhang
-ignore_globs = model.pkl
+ignore_globs = model.pkl,data_*.npz
 
