@@ -4,7 +4,7 @@ import cupy as cp
 import chainer
 import model.functions as f
 
-from data.gaussian import get_gaussian
+from data.mini_mnist import get_mini_mnist
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators, serializers
 from chainer.dataset import concat_examples
@@ -31,7 +31,7 @@ def test(args, eps, test_iter, model):
 
         # Forward the test data
         output = model.forward(data)
-        if args.env == 'gaussian1':
+        if args.env.endswith('1'):
             target = cp.array(label.reshape(output.shape), dtype=output.dtype)
             pred = int(np.sign(output.item()))
         else:
@@ -51,7 +51,7 @@ def test(args, eps, test_iter, model):
 
         # Forward the test data
         adv_output = model.forward(adv_data)
-        if args.env == 'gaussian1':
+        if args.env.endswith('1'):
             adv_pred = int(np.sign(adv_output.item()))
         else:
             adv_pred = adv_output.data.argmax()
@@ -62,7 +62,7 @@ def test(args, eps, test_iter, model):
         else:
             # Save some adv examples for visualization later
             if args.save_img and len(adv_exs) < args.log_adv_num:
-                if args.env == 'mnist':
+                if args.env.startswith('mnist'):
                     img = cp.asnumpy(adv_data.reshape(28, 28))
                 elif args.env == 'cifar10':
                     img = cp.asnumpy(adv_data.reshape(3, 32, 32).swapaxes(0, 2))
@@ -104,15 +104,13 @@ def main():
             break
 
     # data
-    if config.env == 'gaussian1':
-        data = get_gaussian(d=500, n=1000, c=1, mu=0.5, sigma=1, seed=config.seed)
-        test_data = data
-        in_size = 500
+    if config.env == 'mnist1':
+        test_data = get_mini_mnist(c=1)
+        in_size = 28 * 28
         out_size = 1
-    elif config.env == 'gaussian2':
-        data = get_gaussian(d=500, n=1000, c=2, mu=0.5, sigma=1, seed=config.seed)
-        test_data = data
-        in_size = 500
+    elif config.env == 'mnist2':
+        test_data = get_mini_mnist(c=2)
+        in_size = 28 * 28
         out_size = 2
     elif config.env == 'mnist':
         test_data = get_mnist(withlabel=True, ndim=1)[1]
@@ -148,9 +146,7 @@ def main():
     # attack and log
     if args.wandb:
         wandb.init(name=args.attack + '-' + name, project="cerebellum", entity="liuyuezhang", config=args)
-    if args.env.startswith('gaussian'):
-        eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
-    elif args.env == 'mnist':
+    if args.env.startswith('mnist'):
         eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     elif args.env == 'cifar10':
         eps_list = [0, 2/255, 4/255, 6/255, 8/255]

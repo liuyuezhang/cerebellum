@@ -5,8 +5,7 @@ import chainer
 import chainer.functions as F
 import model.functions as f
 
-from data.gaussian import get_gaussian
-from data.mnist1 import get_mnist1
+from data.mini_mnist import get_mini_mnist
 from chainer.datasets import get_mnist, get_cifar10
 from chainer import iterators, optimizers, serializers
 from chainer.dataset import concat_examples
@@ -112,24 +111,18 @@ def main():
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
     # data
-    if args.env == 'gaussian1':
-        data = get_gaussian(d=500, n=1000, c=1, mu=0.5, sigma=1, seed=args.seed)
-        train_data = data
-        test_data = data
-        in_size = 500
-        out_size = 1
-    elif args.env == 'gaussian2':
-        data = get_gaussian(d=500, n=1000, c=2, mu=0.5, sigma=1, seed=args.seed)
-        train_data = data
-        test_data = data
-        in_size = 500
-        out_size = 2
-    elif args.env == 'mnist1':
-        data = get_mnist1()
+    if args.env == 'mnist1':
+        data = get_mini_mnist(c=1)
         train_data = data
         test_data = data
         in_size = 28 * 28
         out_size = 1
+    elif args.env == 'mnist2':
+        data = get_mini_mnist(c=2)
+        train_data = data
+        test_data = data
+        in_size = 28 * 28
+        out_size = 2
     elif args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
         in_size = 28 * 28
@@ -179,7 +172,7 @@ def main():
             if args.save:
                 serializers.save_npz(wandb.run.dir + '/model.pkl', model)
             # early stopping
-            if best_test_acc >= 1:
+            if best_test_acc >= 0.995:
                 break
 
     print('best_train_accuracy:{:.04f}'.format(best_train_acc))
