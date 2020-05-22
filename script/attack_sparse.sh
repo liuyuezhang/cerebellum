@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ATTACK=fgsm
+ATTACK=pgd
 ENV=mnist
 LTD=none
 SEED=0

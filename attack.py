@@ -48,7 +48,7 @@ def test(args, eps, test_iter, model):
         elif args.attack == 'fgsm':
             adv_data, grad_info = fgsm(model, data, target, eps, clip=clip)
         elif args.attack == 'pgd':
-            adv_data, grad_info = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=clip)
+            adv_data, grad_info = pgd(model, data, target, eps, alpha=0.01, steps=2, random_start=True, clip=clip)
         else:
             raise NotImplementedError
 
@@ -68,7 +68,7 @@ def test(args, eps, test_iter, model):
             adv_datas.append(cp.asnumpy(adv_data))
             adv_outputs.append(cp.asnumpy(adv_output.array))
             grad_infos.append(cp.asnumpy(grad_info))
-            labels.append(label)
+            labels.append(cp.asnumpy(label))
 
     acc = correct / len(test_iter.dataset)
     print('eps:{:.02f} perturbed_acc:{:.04f}'.format(eps, acc))
