@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ATTACK=fgsm
-ENV=mnist1
+ENV=mnist
 LTD=none
 SEED=0
 

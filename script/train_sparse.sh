@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ENV=mnist2
+ENV=mnist
 EPOCH=100
 LTD=none
 SEED=0
