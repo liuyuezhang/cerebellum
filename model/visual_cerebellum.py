@@ -2,7 +2,6 @@ import chainer
 from chainer import serializers
 
 from model.vgg import VGG11
-from model.resnet import ResNet50
 from model.cerebellum import Cerebellum
 
 
