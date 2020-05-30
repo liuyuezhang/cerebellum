@@ -119,6 +119,10 @@ def main():
     if args.wandb:
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
+    # seed
+    np.random.seed(args.seed)
+    cp.random.seed(args.seed)
+
     # data
     if args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
@@ -127,14 +131,10 @@ def main():
     elif args.env == 'cifar10':
         train_data, test_data = get_cifar10(withlabel=True, ndim=3)
         train_data = TransformDataset(train_data, ('img', 'label'), tranform)
-        in_size = 2048
+        in_size = 4096
         out_size = 10
     else:
         raise NotImplementedError
-
-    # seed
-    np.random.seed(args.seed)
-    cp.random.seed(args.seed)
 
     train_iter = iterators.MultiprocessIterator(train_data, args.batch_size, repeat=False, shuffle=True)
     test_iter = iterators.MultiprocessIterator(test_data, args.batch_size, repeat=False, shuffle=False)
@@ -146,7 +146,7 @@ def main():
         model = Cerebellum(in_size=in_size, out_size=out_size, args=args)
     elif args.env == 'cifar10':
         model = VisualCerebellum(in_size=in_size, out_size=out_size, args=args)
-        model.init_visual('./pretrain/resnet50_cifar10.pkl')
+        model.init_visual('./pretrain/vgg11_cifar10.pkl')
     else:
         raise NotImplementedError
 
