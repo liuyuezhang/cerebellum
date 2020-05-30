@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ENV=mnist
-EPOCH=100
+EPOCH=10
 LTD=none
 SEED=0
 

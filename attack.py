@@ -42,22 +42,18 @@ def test(args, eps, test_iter, model):
             target = f.one_hot(label, out_size=output.shape[-1], dtype=output.dtype)
 
         # Attack
-        clip = False if args.env.startswith('gaussian') else True
         if args.attack == 'random':
-            adv_data = random(data, eps, clip=clip)
+            adv_data = random(data, eps, clip=True)
         elif args.attack == 'fgsm':
-            adv_data, grad_info = fgsm(model, data, target, eps, clip=clip)
+            adv_data, grad_info = fgsm(model, data, target, eps, clip=True)
         elif args.attack == 'pgd':
-            adv_data, grad_info = pgd(model, data, target, eps, alpha=0.01, steps=2, random_start=True, clip=clip)
+            adv_data, grad_info = pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=True)
         else:
             raise NotImplementedError
 
         # Forward the test data
         adv_output = model.forward(adv_data)
-        if args.env.endswith('1'):
-            adv_pred = int(np.sign(adv_output.item()))
-        else:
-            adv_pred = adv_output.data.argmax()
+        adv_pred = adv_output.data.argmax()
 
         # Calculate the accuracy
         if adv_pred == label:
@@ -74,7 +70,7 @@ def test(args, eps, test_iter, model):
     print('eps:{:.02f} perturbed_acc:{:.04f}'.format(eps, acc))
     if args.wandb:
         wandb.log({"attack_acc": acc, "eps": eps})
-    if args.save and (eps == 0.1 or eps == 0.3):
+    if args.save:
         np.savez(wandb.run.dir + '/data_' + str(eps), data=np.array(datas), output=np.array(outputs),
                  adv_data=np.array(adv_datas), adv_output=np.array(adv_outputs),
                  grad_info=np.array(grad_infos), label=np.array(labels))
@@ -150,7 +146,7 @@ def main():
     if args.env.startswith('mnist'):
         eps_list = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
     elif args.env == 'cifar10':
-        eps_list = [0, 2/255, 4/255, 6/255, 8/255]
+        eps_list = [2/255, 8/255]
     else:
         raise NotImplementedError
     for eps in eps_list:

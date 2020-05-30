@@ -5,14 +5,23 @@ import chainer
 import chainer.functions as F
 import model.functions as f
 
-from data.mini_mnist import get_mini_mnist
 from chainer.datasets import get_mnist, get_cifar10
+from chainercv.chainer_experimental.datasets.sliceable import TransformDataset
+from chainercv.transforms import resize_contain, random_crop, random_flip
 from chainer import iterators, optimizers, serializers
 from chainer.dataset import concat_examples
 from chainer.backends.cuda import to_cpu
 
 from param import get_parser
 import wandb
+
+
+def tranform(data):
+    img, label = data
+    img = resize_contain(img, size=(40, 40), fill=0)
+    img = random_crop(img, size=(32, 32))
+    img = random_flip(img, x_random=True, y_random=False)
+    return img, label
 
 
 def train(args, epoch, train_iter, model, optimizer):
@@ -111,25 +120,14 @@ def main():
         wandb.init(name=name, project="cerebellum", entity="liuyuezhang", config=args)
 
     # data
-    if args.env == 'mnist1':
-        data = get_mini_mnist(c=1)
-        train_data = data
-        test_data = data
-        in_size = 28 * 28
-        out_size = 1
-    elif args.env == 'mnist2':
-        data = get_mini_mnist(c=2)
-        train_data = data
-        test_data = data
-        in_size = 28 * 28
-        out_size = 2
-    elif args.env == 'mnist':
+    if args.env == 'mnist':
         train_data, test_data = get_mnist(withlabel=True, ndim=1)
         in_size = 28 * 28
         out_size = 10
     elif args.env == 'cifar10':
-        train_data, test_data = get_cifar10(withlabel=True, ndim=1)
-        in_size = 3 * 32 * 32
+        train_data, test_data = get_cifar10(withlabel=True, ndim=3)
+        train_data = TransformDataset(train_data, ('img', 'label'), tranform)
+        in_size = 2048
         out_size = 10
     else:
         raise NotImplementedError
@@ -143,7 +141,14 @@ def main():
 
     # model
     from model.cerebellum import Cerebellum
-    model = Cerebellum(in_size=in_size, out_size=out_size, args=args)
+    from model.visual_cerebellum import VisualCerebellum
+    if args.env == 'mnist':
+        model = Cerebellum(in_size=in_size, out_size=out_size, args=args)
+    elif args.env == 'cifar10':
+        model = VisualCerebellum(in_size=in_size, out_size=out_size, args=args)
+        model.init_visual('./pretrain/resnet50_cifar10.pkl')
+    else:
+        raise NotImplementedError
 
     # device
     if args.gpu_id >= 0:
@@ -156,7 +161,12 @@ def main():
         optimizer = optimizers.SGD(lr=args.lr)
     else:
         raise NotImplementedError
-    optimizer.setup(model.purkinje)
+    if args.env == 'mnist':
+        optimizer.setup(model.purkinje)
+    elif args.env == 'cifar10':
+        optimizer.setup(model.cerebellum.purkinje)
+    else:
+        raise NotImplementedError
 
     # train
     best_train_acc = 0

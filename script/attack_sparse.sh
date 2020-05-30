@@ -6,6 +6,7 @@ LTD=none
 SEED=0
 
 python -m attack --env $ENV --attack $ATTACK --granule rc --k 784 --n-hidden 5970   --lr 8.375e-5  --ltd $LTD --seed $SEED --wandb --save &
+python -m attack --env $ENV --attack $ATTACK --granule fc --k 784 --n-hidden 5970   --lr 8.375e-5  --ltd $LTD --seed $SEED --wandb --save &
 python -m attack --env $ENV --attack $ATTACK --granule rc --k 400 --n-hidden 11429  --lr 4.375e-5  --ltd $LTD --seed $SEED --wandb --save &
 python -m attack --env $ENV --attack $ATTACK --granule rc --k 200 --n-hidden 21818  --lr 2.292e-5  --ltd $LTD --seed $SEED --wandb --save &
 python -m attack --env $ENV --attack $ATTACK --granule rc --k 100 --n-hidden 40000  --lr 1.25e-5   --ltd $LTD --seed $SEED --wandb --save &

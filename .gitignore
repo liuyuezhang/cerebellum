@@ -1,6 +1,7 @@
 # res
 wandb/run*
 res/
+pretrain/
 
 # PyCharm
 .idea/
