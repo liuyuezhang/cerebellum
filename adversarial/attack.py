@@ -68,9 +68,9 @@ def pgd(model, data, target, eps, alpha=0.01, steps=40, random_start=True, clip=
         if clip:
             x = cp.clip(x, 0, 1)
 
-        norm1 = cp.linalg.norm(grad.squeeze(), 1).item()
-        norm2 = cp.linalg.norm(grad.squeeze(), 2).item()
-        norm_inf = cp.linalg.norm(grad.squeeze(), cp.inf).item()
+        norm1 = cp.linalg.norm(grad.squeeze().reshape(-1), 1).item()
+        norm2 = cp.linalg.norm(grad.squeeze().reshape(-1), 2).item()
+        norm_inf = cp.linalg.norm(grad.squeeze().reshape(-1), cp.inf).item()
         grad_info.append([norm1, norm2, norm_inf])
 
     return x, grad_info

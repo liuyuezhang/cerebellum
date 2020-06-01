@@ -114,8 +114,8 @@ def main():
         in_size = 28 * 28
         out_size = 10
     elif config.env == 'cifar10':
-        test_data = get_cifar10(withlabel=True, ndim=1)[1]
-        in_size = 3 * 32 * 32
+        test_data = get_cifar10(withlabel=True, ndim=3)[1]
+        in_size = 4096
         out_size = 10
     else:
         raise NotImplementedError
@@ -128,7 +128,13 @@ def main():
 
     # model
     from model.cerebellum import Cerebellum
-    model = Cerebellum(in_size=in_size, out_size=out_size, args=config)
+    from model.visual_cerebellum import VisualCerebellum
+    if args.env == 'mnist':
+        model = Cerebellum(in_size=in_size, out_size=out_size, args=args)
+    elif args.env == 'cifar10':
+        model = VisualCerebellum(in_size=in_size, out_size=out_size, args=args)
+    else:
+        raise NotImplementedError
 
     # load
     for file in os.listdir(args.res_dir):
