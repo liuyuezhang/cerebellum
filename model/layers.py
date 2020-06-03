@@ -41,7 +41,7 @@ class LC(Link):
             start = np.random.randint(in_size - k + 1, size=out_size)
             self.idx = np.array(f.n_ranges(start, start + k, return_flat=False))
             self.W = chainer.Parameter(
-                initializers.Normal(1. / math.sqrt(in_size)),
+                initializers.Normal(1. / math.sqrt(k)),
                 (out_size, k))
             if not no_bias:
                 self.b = chainer.Parameter(0, (out_size,))
@@ -69,7 +69,7 @@ class RC(Link):
         with self.init_scope():
             self.idx = np.random.randint(in_size, size=(out_size, k))
             self.W = chainer.Parameter(
-                initializers.Normal(1. / math.sqrt(in_size)),
+                initializers.Normal(1. / math.sqrt(k)),
                 (out_size, k))
             if not no_bias:
                 self.b = chainer.Parameter(0, (out_size,))
