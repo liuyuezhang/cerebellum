@@ -101,15 +101,7 @@ def main():
             break
 
     # data
-    if config.env == 'mnist1':
-        test_data = get_mini_mnist(c=1)
-        in_size = 28 * 28
-        out_size = 1
-    elif config.env == 'mnist2':
-        test_data = get_mini_mnist(c=2)
-        in_size = 28 * 28
-        out_size = 2
-    elif config.env == 'mnist':
+    if config.env == 'mnist':
         test_data = get_mnist(withlabel=True, ndim=1)[1]
         in_size = 28 * 28
         out_size = 10
